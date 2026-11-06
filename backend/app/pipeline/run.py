@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import logging
+import time
 import shutil
 from pathlib import Path
 
 from . import asr, diarize, source
 from .build import enrich_cue, finalize, normalize_cues, now_iso
-from .cues import cues_from_segments, cues_from_words, split_long_cue, merge_short
+from .cues import cues_from_asr, split_long_cue
 from .subtitles import parse_subtitle_file
 from .translate import LLMUnavailable, Translator
 from .. import storage
@@ -24,6 +25,8 @@ STAGES = {
 def run_pipeline(params: dict, report) -> dict:
     """params: url | upload_path, subtitle_path, title, series, episode, lang, target, glossary, force_asr.
     report(stage, frac, message) cập nhật tiến trình."""
+    t_start = time.time()
+    stats: dict = {}
     lang = params.get("lang") or "ja"
     target = params.get("target") or "vi"
     warnings: list[str] = []
@@ -46,7 +49,7 @@ def run_pipeline(params: dict, report) -> dict:
         video_id = params["video_id"]
         mdir = source.media_dir(video_id)
         player = {"type": "html5", "src": f"/media/{video_id}/{up.name}"}
-        duration = source.probe_duration(up)
+        duration = source.probe_media(up, require_audio=not params.get("subtitle_path"))["duration"]
         src_info = {"kind": "upload", "filename": params.get("original_name", up.name)}
         title = title or Path(params.get("original_name", up.name)).stem
         media_src = up
@@ -59,8 +62,12 @@ def run_pipeline(params: dict, report) -> dict:
         media_src = None
         if kind == "media":
             player = {"type": "html5", "src": url}
-            media_src = url
-            duration = source.probe_duration(url)
+            if url.split("?")[0].lower().endswith(".m3u8"):
+                media_src = url                      # HLS: ffmpeg đọc trực tiếp từng đoạn
+            else:
+                step("fetch", 0.2, "Đang tải file video")
+                media_src = source.download_media(url, mdir)
+            duration = source.probe_media(media_src, require_audio=not params.get("subtitle_path"))["duration"]
             title = title or Path(url.split("?")[0]).stem
         else:
             info = source.fetch_info(url)
@@ -94,10 +101,13 @@ def run_pipeline(params: dict, report) -> dict:
             wav = source.download_audio(url, mdir)
         duration = duration or source.probe_duration(wav)
         step("asr", 0, "Đang nhận dạng giọng nói (ASR)")
+        t0 = time.time()
         res = asr.transcribe(str(wav), lang, progress=lambda f: step("asr", f, "Đang nhận dạng giọng nói"),
                              duration=duration)
+        stats["asrSec"] = round(time.time() - t0, 2)
+        stats["asrEngine"] = res.get("engine")
         step("segment", 0, "Đang chia câu")
-        raw_cues = cues_from_words(res["words"]) if res["words"] else cues_from_segments(res["segments"])
+        raw_cues = cues_from_asr(res["segments"])
         sub_kind = "asr"
     else:
         step("segment", 0, f"Đã có phụ đề gốc ({len(raw_cues)} dòng) – bỏ qua ASR")
@@ -107,32 +117,43 @@ def run_pipeline(params: dict, report) -> dict:
         raw_cues = split
 
     cues = normalize_cues(raw_cues, lang)
-    if sub_kind == "asr":
-        cues = merge_short(cues)
-        for i, c in enumerate(cues, 1):
-            c["id"] = i
+    if not cues:
+        from ..errors import PipelineError
+        raise PipelineError("NO_SPEECH", "Không nhận được câu thoại nào: video không có tiếng nói hoặc phụ đề trống")
 
     # ---------------------------------------------------------------- 3. người nói
-    if diarize.available() and not any(c.get("speaker") for c in cues):
-        step("diarize", 0, "Đang nhận diện người nói (pyannote)")
+    need_spk = not any(c.get("speaker") for c in cues) and params.get("diarize", True)
+    if need_spk and diarize.available():
+        step("diarize", 0, "Đang nhận diện người nói")
+        t0 = time.time()
         try:
             if wav is None and media_src is not None:
                 wav = source.extract_audio(media_src, mdir / "audio.wav")
             if wav is not None:
-                diarize.assign_speakers(cues, diarize.diarize(str(wav)))
+                if diarize.mode() == "embedding":
+                    n = diarize.assign_by_embedding(cues, asr.load_wav(str(wav)), params.get("num_speakers"))
+                    stats["speakersFound"] = n
+                else:
+                    diarize.assign_from_turns(cues, diarize.diarize_pyannote(str(wav)))
         except Exception as e:   # không chặn pipeline
-            warnings.append(f"Diarization lỗi: {e}")
+            warnings.append(f"Nhận diện người nói lỗi: {e}")
+        stats["diarizeSec"] = round(time.time() - t0, 2)
 
     # ---------------------------------------------------------------- 4. furigana / tách từ
     step("furigana", 0, "Đang tách từ và sinh furigana")
+    t0 = time.time()
     for c in cues:
         enrich_cue(c, lang)
+    stats["nlpSec"] = round(time.time() - t0, 2)
 
     # ---------------------------------------------------------------- 5. dịch + phân tích
     step("translate", 0, "Đang dịch và phân tích (LLM)")
     try:
         tr = Translator(lang, target, params.get("glossary", ""))
+        t0 = time.time()
         warnings += tr.process(cues, progress=lambda f: step("translate", f, "Đang dịch và phân tích (LLM)"))
+        stats["llmSec"] = round(time.time() - t0, 2)
+        stats["llmUsage"] = tr.usage_summary()
     except LLMUnavailable as e:
         warnings.append(f"Bỏ qua bước dịch/phân tích: LLM chưa sẵn sàng ({e}). "
                         "Đặt ANTHROPIC_API_KEY rồi bấm 'Dịch lại' trong trang chỉnh sửa.")
@@ -150,6 +171,7 @@ def run_pipeline(params: dict, report) -> dict:
         "speakers": old.get("speakers", []),
         "createdAt": old.get("createdAt") or now_iso(),
         "warnings": warnings, "cues": cues,
+        "stats": {**stats, "totalSec": round(time.time() - t_start, 2), "cueCount": len(cues)},
     }
     finalize(doc)
     storage.save_transcript(doc)

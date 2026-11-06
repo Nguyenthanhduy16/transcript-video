@@ -6,3 +6,6 @@ data/jobs/
 data/media/
 data/videos/
 !data/demo/
+models/
+data/cache/
+data/bench/

@@ -16,16 +16,15 @@ from pydantic import BaseModel
 
 from . import storage
 from .config import FRONTEND_DIR, MEDIA_DIR
-from .jobs import JobManager
+from .queue import QUEUE_BACKEND, get_queue
 from .pipeline import source
 from .pipeline.build import enrich_cue, finalize, normalize_cues
 from .pipeline.cues import classify
-from .pipeline.run import run_pipeline
 from .pipeline.translate import LLMUnavailable, Translator
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 app = FastAPI(title="Video Transcript học ngoại ngữ")
-jobs = JobManager(workers=1)
+jobs = get_queue()
 
 
 # ------------------------------------------------------------------ jobs
@@ -39,6 +38,7 @@ class JobIn(BaseModel):
     glossary: str = ""
     force_asr: bool = False
     allow_auto_subs: bool = False
+    num_speakers: int | None = None
 
 
 @app.post("/api/jobs")
@@ -48,7 +48,7 @@ def create_job(body: JobIn):
     params = body.model_dump()
     yt = source.youtube_id(body.url)
     params["video_id"] = yt or source.make_video_id(body.url)
-    return jobs.submit(run_pipeline, params, label=body.title or body.url)
+    return jobs.submit("transcript", params, label=body.title or body.url)
 
 
 @app.post("/api/jobs/upload")
@@ -56,7 +56,7 @@ async def create_upload_job(
     video: UploadFile = File(...), subtitle: UploadFile | None = File(None),
     title: str = Form(""), series: str = Form(""), episode: int | None = Form(None),
     lang: str = Form("ja"), target: str = Form("vi"), glossary: str = Form(""),
-    force_asr: bool = Form(False),
+    force_asr: bool = Form(False), num_speakers: int | None = Form(None),
 ):
     ext = Path(video.filename or "video.mp4").suffix.lower() or ".mp4"
     if ext not in source.MEDIA_EXT:
@@ -68,7 +68,8 @@ async def create_upload_job(
         shutil.copyfileobj(video.file, f)
     params = {"video_id": video_id, "upload_path": str(vpath), "original_name": video.filename,
               "title": title or None, "series": series or None, "episode": episode,
-              "lang": lang, "target": target, "glossary": glossary, "force_asr": force_asr}
+              "lang": lang, "target": target, "glossary": glossary, "force_asr": force_asr,
+              "num_speakers": num_speakers}
     if subtitle and subtitle.filename:
         sext = Path(subtitle.filename).suffix.lower()
         if sext not in (".srt", ".vtt", ".ass", ".ssa"):
@@ -77,7 +78,7 @@ async def create_upload_job(
         with spath.open("wb") as f:
             shutil.copyfileobj(subtitle.file, f)
         params["subtitle_path"] = str(spath)
-    return jobs.submit(run_pipeline, params, label=title or video.filename)
+    return jobs.submit("transcript", params, label=title or video.filename)
 
 
 @app.get("/api/jobs")
@@ -192,6 +193,9 @@ class RetranslateIn(BaseModel):
 
 def _retranslate(params, report):
     doc = storage.load_transcript(params["video_id"])
+    if not doc:
+        from .errors import PipelineError
+        raise PipelineError("NOT_FOUND", f"Không có transcript cho video '{params['video_id']}'")
     ids = set(params["ids"]) if params.get("ids") else None
     report("translate", 5, "Đang dịch lại")
     for c in doc["cues"]:
@@ -201,7 +205,8 @@ def _retranslate(params, report):
     try:
         tr = Translator(doc["lang"], doc["target"], doc.get("glossary", ""))
     except LLMUnavailable as e:
-        raise RuntimeError(f"LLM chưa sẵn sàng: {e}")
+        from .errors import PipelineError
+        raise PipelineError("LLM_UNAVAILABLE", f"LLM chưa sẵn sàng: {e}")
     warns = tr.process(doc["cues"], only_ids=ids, progress=lambda f: report("translate", 5 + 90 * f, "Đang dịch lại"))
     for c in doc["cues"]:
         c.pop("_cand", None), c.pop("_kanji", None)
@@ -218,7 +223,7 @@ def retranslate(video_id: str, body: RetranslateIn):
     ids = body.ids if body.ids else (None if body.all else doc.get("needsAnalysis") or None)
     if ids is None and not body.all:
         raise HTTPException(400, "Không có cue nào cần dịch lại (truyền ids hoặc all=true)")
-    return jobs.submit(_retranslate, {"video_id": video_id, "ids": ids}, label=f"Dịch lại {doc['title']}")
+    return jobs.submit("retranslate", {"video_id": video_id, "ids": ids}, label=f"Dịch lại {doc['title']}")
 
 
 @app.delete("/api/videos/{video_id}")
@@ -258,8 +263,15 @@ def export(video_id: str, fmt: str, lang: str = "both"):
 @app.get("/api/health")
 def health():
     import importlib.util as u
-    return {"ok": True, "asr": bool(u.find_spec("faster_whisper") or u.find_spec("whisperx")),
-            "diarization": bool(u.find_spec("pyannote")), "ffmpeg": bool(shutil.which("ffmpeg"))}
+    from .pipeline import asr, diarize
+    try:
+        counts = jobs.counts()
+    except Exception as e:      # Redis không kết nối được
+        counts = {"error": str(e)}
+    return {"ok": True, "queue": QUEUE_BACKEND, "jobs": counts,
+            "asr": asr.available("ja"), "asrEngine": asr.resolve_engine("ja"),
+            "diarization": diarize.mode(), "ffmpeg": bool(shutil.which("ffmpeg")),
+            "llm": bool(u.find_spec("anthropic"))}
 
 
 # ------------------------------------------------------------------ static

@@ -158,6 +158,176 @@ def _reading_of(text: str) -> str:
     return "".join(kata_to_hira(m.reading_form()) for m in _tokenizer().tokenize(text, SplitMode.C))
 
 
+# ---------------------------------------------------------------- sửa cách đọc (số đếm, từ đặc biệt)
+_DIG = {"〇": 0, "零": 0, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_NUM_RE = re.compile(
+    r"([一二三四五六七八九十百千〇]+)(日間|週間|か月|ヶ月|カ月|か国|ページ|つ|人|本|分|回|時|歳|才|冊|枚|円|年|個|杯|匹|階|月|日|度|点|台)")
+_SPECIAL_WORDS = {
+    "富士山": "ふじさん", "一昨日": "おととい", "一昨年": "おととし", "明後日": "あさって",
+    "大人": "おとな", "今朝": "けさ", "今年": "ことし", "眼鏡": "めがね", "八百屋": "やおや",
+    "一年中": "いちねんじゅう", "一日中": "いちにちじゅう", "世界中": "せかいじゅう", "日本中": "にほんじゅう",
+}
+_TSU = {1: "ひとつ", 2: "ふたつ", 3: "みっつ", 4: "よっつ", 5: "いつつ", 6: "むっつ", 7: "ななつ", 8: "やっつ", 9: "ここのつ", 10: "とお"}
+_DAYS = {1: "ついたち", 2: "ふつか", 3: "みっか", 4: "よっか", 5: "いつか", 6: "むいか", 7: "なのか", 8: "ようか",
+         9: "ここのか", 10: "とおか", 14: "じゅうよっか", 20: "はつか", 24: "にじゅうよっか"}
+_DAYS_DUR = {1: "いちにち"}
+_MONTH = {4: "しがつ", 7: "しちがつ", 9: "くがつ"}
+_HOUR = {4: "よじ", 7: "しちじ", 9: "くじ"}
+_PERSON = {1: "ひとり", 2: "ふたり"}
+
+
+def _kanji_number(s: str) -> int | None:
+    total, cur = 0, 0
+    for ch in s:
+        if ch in _DIG:
+            cur = cur * 10 + _DIG[ch] if cur and s.find("十") < 0 and s.find("百") < 0 else _DIG[ch]
+        elif ch in "十百千":
+            mul = {"十": 10, "百": 100, "千": 1000}[ch]
+            total += (cur or 1) * mul
+            cur = 0
+        else:
+            return None
+    return total + cur
+
+
+def _num_reading(n: int) -> str:
+    """Đọc số 0–9999 (âm Hán), có biến âm 三百/六百/八百/三千/八千."""
+    if n == 0:
+        return "ぜろ"
+    ones = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"]
+    out = ""
+    th, n = divmod(n, 1000)
+    if th:
+        out += {1: "せん", 3: "さんぜん", 8: "はっせん"}.get(th, ones[th] + "せん")
+    h, n = divmod(n, 100)
+    if h:
+        out += {1: "ひゃく", 3: "さんびゃく", 6: "ろっぴゃく", 8: "はっぴゃく"}.get(h, ones[h] + "ひゃく")
+    t, n = divmod(n, 10)
+    if t:
+        out += ("" if t == 1 else ones[t]) + "じゅう"
+    return out + ones[n]
+
+
+def _with_counter(n: int, counter: str, prev: str, nxt: str) -> str | None:
+    base = _num_reading(n)
+    last = n % 10
+    tens_only = n % 10 == 0 and n >= 10
+    def sokuon(stem_map, default_suffix, sk_suffix, h_suffix=None):
+        # 1,6,8,10 → っ + âm p/k ; 3 (và 'nan') → b/p
+        r = base
+        if tens_only:
+            return r[:-3] + "じゅっ" + sk_suffix if r.endswith("じゅう") else r + default_suffix
+        if last in (1, 6, 8):
+            r = r[:-1] + "っ" if last in (1, 6) else r[:-1] + "っ"
+            return r + sk_suffix
+        if last == 3 and h_suffix:
+            return r + h_suffix
+        return r + default_suffix
+    if counter == "つ" and n in _TSU:
+        return _TSU[n]
+    if counter == "日間":
+        return (_DAYS.get(n) if n != 1 else "いちにち") + "かん" if (n in _DAYS or n == 1) else base + "にちかん"
+    if counter == "日":
+        if n in _DAYS and (n != 1 or prev.endswith("月")):
+            return _DAYS[n]
+        if n == 1:
+            return "いちにち"
+        return base + "にち"
+    if counter == "月":
+        return _MONTH.get(n, base + "がつ")
+    if counter == "時":
+        return _HOUR.get(n, base + "じ")
+    if counter == "人":
+        return _PERSON.get(n, (base[:-2] + "よ" if base.endswith("よん") else base) + "にん")
+    if counter == "分":
+        if n == 10 and prev == "十" and not re.match(r"(ぐらい|くらい|ほど|後|前|間|で(?!す)|かかり|かかる|おき|待|も|しか)", nxt):
+            return "じゅうぶん"                   # 十分 = "đủ"
+        if last in (1, 6, 8) or tens_only:
+            return sokuon(None, "ふん", "ぷん")
+        if last in (3, 4) or base.endswith("さん") or base.endswith("よん"):
+            return base + "ぷん"
+        return base + "ふん"
+    if counter in ("本", "杯", "匹"):
+        h, b, p = {"本": ("ほん", "ぼん", "ぽん"), "杯": ("はい", "ばい", "ぱい"), "匹": ("ひき", "びき", "ぴき")}[counter]
+        if last in (1, 6, 8) or tens_only:
+            return sokuon(None, h, p)
+        if last == 3:
+            return base + b
+        return base + h
+    if counter in ("回", "個", "階", "か月", "ヶ月", "カ月", "か国"):
+        k = {"回": "かい", "個": "こ", "階": "かい", "か月": "かげつ", "ヶ月": "かげつ", "カ月": "かげつ", "か国": "かこく"}[counter]
+        if last in (1, 6, 8) or tens_only:
+            return sokuon(None, k, k)
+        if counter == "階" and last == 3:
+            return base + "がい"
+        return base + k
+    if counter in ("冊", "歳", "才", "週間", "点"):
+        k = {"冊": "さつ", "歳": "さい", "才": "さい", "週間": "しゅうかん", "点": "てん"}[counter]
+        if n == 20 and counter in ("歳", "才"):
+            return "はたち"
+        if last in (1, 8) or tens_only:
+            return sokuon(None, k, k)
+        return base + k
+    if counter == "円" and last == 4:
+        return base[:-2] + "よえん"
+    simple = {"枚": "まい", "円": "えん", "年": "ねん", "度": "ど", "台": "だい", "ページ": "ぺーじ"}
+    if counter in simple:
+        if counter == "年" and last == 4:
+            return base[:-2] + "よねん"
+        return base + simple[counter]
+    return None
+
+
+def _fix_readings(text: str, toks: list[dict]) -> list[dict]:
+    """Gộp token theo các mẫu số + đơn vị đếm / từ đặc biệt và đặt lại cách đọc."""
+    spans: list[tuple[int, int, str]] = []
+    for w, r in _SPECIAL_WORDS.items():
+        for m in re.finditer(re.escape(w), text):
+            spans.append((m.start(), m.end(), r))
+    for m in _NUM_RE.finditer(text):
+        if any(a < m.end() and m.start() < b for a, b, _ in spans):
+            continue
+        n = _kanji_number(m.group(1))
+        if n is None:
+            continue
+        prev = m.group(1) if m.group(1) == "十" else text[:m.start()]
+        r = _with_counter(n, m.group(2), prev, text[m.end():])
+        if r:
+            spans.append((m.start(), m.end(), r))
+    # vị trí ký tự của token
+    pos, offs = 0, []
+    for t in toks:
+        offs.append((pos, pos + len(t["surface"])))
+        pos += len(t["surface"])
+    out, i = [], 0
+    for a, b, r in sorted(spans):
+        # chỉ thay khi ranh giới mẫu trùng ranh giới token
+        idx = [k for k, (x, y) in enumerate(offs) if x >= a and y <= b]
+        if not idx or offs[idx[0]][0] != a or offs[idx[-1]][1] != b or idx[0] < i:
+            continue
+        out.extend(toks[i:idx[0]])
+        surf = text[a:b]
+        first = toks[idx[0]]
+        out.append({**first, "surface": surf, "reading": r, "lemma": surf, "lemmaReading": r,
+                    "furigana": furigana_segments(surf, r), "romaji": to_romaji(r),
+                    "isWord": surf in _SPECIAL_WORDS and first["pos"] == "noun"})
+        i = idx[-1] + 1
+    out.extend(toks[i:])
+    # quy tắc theo ngữ cảnh
+    for k, t in enumerate(out):
+        nxt = out[k + 1]["surface"] if k + 1 < len(out) else ""
+        prev = out[k - 1] if k > 0 else None
+        if t["surface"] == "何" and nxt[:1] in ("も", "を", "が", "に") and t["reading"] != "なに":
+            t.update(reading="なに", lemmaReading="なに", furigana=[["何", "なに"]], romaji="nani")
+        if t["lemma"] == "言う" and t["reading"].startswith("ゆ"):
+            r = "い" + t["reading"][1:]
+            t.update(reading=r, lemmaReading="いう", furigana=furigana_segments(t["surface"], r), romaji=to_romaji(r))
+        if prev and prev["pos"] == "noun" and t["surface"] in ("作り", "造り", "勝ち"):
+            r = {"作り": "づくり", "造り": "づくり", "勝ち": "がち"}[t["surface"]]
+            t.update(reading=r, furigana=furigana_segments(t["surface"], r), romaji=to_romaji(r))
+    return out
+
+
 def tokenize(text: str) -> list[dict]:
     """Tách từ một câu. Nhãn người nói （チエ） được giữ thành token loại 'speaker'."""
     tokens: list[dict] = []
@@ -175,6 +345,10 @@ def tokenize(text: str) -> list[dict]:
 
 
 def _tokenize_plain(text: str) -> list[dict]:
+    return _fix_readings(text, _tokenize_raw(text))
+
+
+def _tokenize_raw(text: str) -> list[dict]:
     out = []
     for m in _tokenizer().tokenize(text, SplitMode.C):
         surface = m.surface()

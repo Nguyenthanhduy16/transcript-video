@@ -10,6 +10,7 @@ PAREN_ONLY_RE = re.compile(r"^\s*([（(\[［【][^）)\]］】]{1,20}[）)\]］�
 LEADING_TAG_RE = re.compile(r"^\s*[（(]([^（）()]{1,12})[）)]\s*")
 ANY_TAG_RE = re.compile(r"[（(]([^（）()]{1,12})[）)]")
 LAUGH_WORDS = ("笑", "笑い声", "笑う")
+ASR_MERGE_GAP_SEC = 0.35
 SENT_END = "。！？!?…"
 
 
@@ -141,3 +142,43 @@ def ensure_min_duration(cues: list[dict]) -> None:
         if c["end"] - c["start"] < CUE_MIN_SEC:
             limit = cues[i + 1]["start"] if i + 1 < len(cues) else c["start"] + CUE_MIN_SEC
             c["end"] = round(min(c["start"] + CUE_MIN_SEC, max(limit, c["end"])), 3)
+
+
+def cues_from_asr(segments: list[dict]) -> list[dict]:
+    """Cue từ kết quả ASR theo lượt nói (VAD): không gộp qua ranh giới lượt nói
+    (tránh trộn hai người), lượt dài thì tách theo mốc từng token / dấu câu."""
+    out: list[dict] = []
+    for s in segments:
+        if s.get("words"):
+            out.extend(cues_from_words(s["words"]))
+        else:
+            out.extend(split_long_cue({"start": s["start"], "end": s["end"], "text": s["text"]}))
+    return merge_fragments(out)
+
+
+def merge_fragments(cues: list[dict], max_gap: float = None) -> list[dict]:
+    """Mẩu < 1 s (vd. 'こんばんは' trước nhịp ngắt) gộp vào mẩu kề GẦN NHẤT nếu quãng nghỉ ≤ 0,35 s.
+    Quãng nghỉ lớn hơn thường là ranh giới giữa hai câu/hai người nói → giữ riêng."""
+    max_gap = ASR_MERGE_GAP_SEC if max_gap is None else max_gap
+    cues = [dict(c) for c in cues]
+    changed = True
+    while changed:
+        changed = False
+        for i, c in enumerate(cues):
+            if c["end"] - c["start"] >= CUE_MIN_SEC:
+                continue
+            gp = c["start"] - cues[i - 1]["end"] if i > 0 else 9e9
+            gn = cues[i + 1]["start"] - c["end"] if i + 1 < len(cues) else 9e9
+            j = i - 1 if gp <= gn else i + 1
+            gap = min(gp, gn)
+            if gap > max_gap:
+                continue
+            a, b = (cues[j], c) if j < i else (c, cues[j])
+            if b["end"] - a["start"] > CUE_MAX_SEC or len(a["text"]) + len(b["text"]) > CUE_MAX_CHARS:
+                continue
+            merged = {**a, "end": b["end"], "text": a["text"] + b["text"]}
+            k = min(i, j)
+            cues[k:k + 2] = [merged]
+            changed = True
+            break
+    return cues

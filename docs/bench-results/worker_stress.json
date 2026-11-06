@@ -1,0 +1,209 @@
+{
+ "jobs": 20,
+ "finished": 20,
+ "asExpected": 20,
+ "workerAlive": true,
+ "elapsedSec": 52.6,
+ "rows": [
+  {
+   "job": "upload mp4 tin tức (ASR)",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 15,
+   "sec": 7.09
+  },
+  {
+   "job": "upload mp4 anime (ASR)",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 24,
+   "sec": 4.28
+  },
+  {
+   "job": "upload mp4 show (ASR)",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 19,
+   "sec": 4.62
+  },
+  {
+   "job": "link mp4 http",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 15,
+   "sec": 5.19
+  },
+  {
+   "job": "link mp4 http, biết số người nói",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 24,
+   "sec": 4.57
+  },
+  {
+   "job": "link HLS .m3u8",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 15,
+   "sec": 4.89
+  },
+  {
+   "job": "link 404",
+   "status": "error",
+   "expected": "SOURCE_NOT_FOUND",
+   "pass": true,
+   "error": "SOURCE_NOT_FOUND: Không tải được link (HTTP 404).",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "trang HTML không phải video",
+   "status": "error",
+   "expected": "UNSUPPORTED_URL",
+   "pass": true,
+   "error": "UNSUPPORTED_URL: Trang này không có video mà tool đọc được (yt-dlp: Unsupported URL). Hãy dán link trực tiếp tới file video hoặc link YouTube.",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "upload file hỏng",
+   "status": "error",
+   "expected": "NOT_MEDIA",
+   "pass": true,
+   "error": "NOT_MEDIA: File hỏng hoặc không phải file video/audio.",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "video không có tiếng, không phụ đề",
+   "status": "error",
+   "expected": "NO_AUDIO",
+   "pass": true,
+   "error": "NO_AUDIO: Nguồn không có kênh âm thanh – không thể nhận dạng lời thoại. Hãy tải kèm file phụ đề .srt/.vtt.",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "video không có tiếng + phụ đề .srt",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 1,
+   "sec": 0.04
+  },
+  {
+   "job": "audio toàn im lặng",
+   "status": "error",
+   "expected": "NO_SPEECH",
+   "pass": true,
+   "error": "NO_SPEECH: Không nhận được câu thoại nào: video không có tiếng nói hoặc phụ đề trống",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "máy chủ không tồn tại",
+   "status": "error",
+   "expected": "SOURCE_UNREACHABLE",
+   "pass": true,
+   "error": "SOURCE_UNREACHABLE: Không kết nối được tới máy chủ của link ([Errno 111] Connection refused).",
+   "attempts": 2,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "giao thức không hỗ trợ",
+   "status": "error",
+   "expected": "UNSUPPORTED_URL",
+   "pass": true,
+   "error": "UNSUPPORTED_URL: Link phải bắt đầu bằng http:// hoặc https:// (giao thức khác chưa hỗ trợ)",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "link HLS lần 2",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 15,
+   "sec": 4.67
+  },
+  {
+   "job": "upload mp4 show lần 2",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 19,
+   "sec": 4.82
+  },
+  {
+   "job": "dịch lại video không tồn tại",
+   "status": "error",
+   "expected": "NOT_FOUND",
+   "pass": true,
+   "error": "NOT_FOUND: Không có transcript cho video 'khong-ton-tai'",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  },
+  {
+   "job": "link mp4 show",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 19,
+   "sec": 4.89
+  },
+  {
+   "job": "upload mp4 tin tức lần 2",
+   "status": "done",
+   "expected": "done",
+   "pass": true,
+   "error": null,
+   "attempts": 1,
+   "cues": 15,
+   "sec": 3.89
+  },
+  {
+   "job": "link 404 lần 2",
+   "status": "error",
+   "expected": "SOURCE_NOT_FOUND",
+   "pass": true,
+   "error": "SOURCE_NOT_FOUND: Không tải được link (HTTP 404 – không tìm thấy). Kiểm tra lại đường dẫn.",
+   "attempts": 1,
+   "cues": null,
+   "sec": null
+  }
+ ]
+}

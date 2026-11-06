@@ -10,7 +10,16 @@ export class HTML5Player extends BasePlayer {
   constructor(el, src) {
     super();
     const v = document.createElement("video");
-    v.src = src;
+    if (/\.m3u8(\?|$)/i.test(src) && !v.canPlayType("application/vnd.apple.mpegurl")) {
+      // HLS trên Chrome/Firefox: dùng hls.js (Safari phát trực tiếp)
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js";
+      s.onload = () => { const h = new window.Hls(); h.loadSource(src); h.attachMedia(v); };
+      s.onerror = () => { this.error = "Không tải được hls.js để phát link .m3u8"; this.emit("error", this.error); };
+      document.head.appendChild(s);
+    } else {
+      v.src = src;
+    }
     v.controls = true;
     v.playsInline = true;
     v.preload = "metadata";

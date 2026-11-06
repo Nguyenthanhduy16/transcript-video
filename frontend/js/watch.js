@@ -79,7 +79,9 @@ function tick() {
   if (jumped) pausedFor = null;
   lastT = t;
   const idx = findIdx(t);
-  const inside = idx >= 0 && t < cues[idx].end + 0.25 ? idx : -1;
+  // hiện phụ đề tối thiểu 1 s (cue ngắn) nếu câu sau chưa bắt đầu
+  const showUntil = idx >= 0 ? Math.max(cues[idx].end + 0.25, cues[idx].start + 1.0) : 0;
+  const inside = idx >= 0 && t < showUntil ? idx : -1;
   if (idx !== activeIdx) setActive(idx);
   if (inside !== showIdx) { showIdx = inside; renderSubtitle(); }
 
@@ -251,9 +253,11 @@ function renderAnalysis() {
       : `<div class="empty">Không có từ vựng.</div>`;
   } else if (anaSub === "kanji") {
     list = k.length ? k.map((x) => `<div class="ana-item"><div class="head"><span class="big kanji-big">${esc(x.char)}</span>
-        <div><div style="font-weight:800">${esc(x.hanViet || "")}</div><div>${esc(x.meaning || "")}</div></div></div>
+        <div><div style="font-weight:800">${esc(x.hanViet || "")}</div><div>${esc(x.meaning || "")}${x.meaningLang === "en" ? ' <span class="badge">EN</span>' : ""}</div></div>
+        ${x.strokes ? `<span class="muted" style="margin-left:auto;font-size:12px">${x.strokes} nét</span>` : ""}</div>
         <div style="font-size:13px;margin-top:6px"><b>On:</b> ${esc((x.on || []).join("、") || "–")} &nbsp; <b>Kun:</b> ${esc((x.kun || []).join("、") || "–")}</div></div>`).join("")
       : `<div class="empty">Câu này không có kanji.</div>`;
+    if (k.length) list += `<p class="muted" style="font-size:11px;margin:4px 2px">Âm On/Kun, Hán Việt: KANJIDIC2 © EDRDG (CC BY-SA 4.0)</p>`;
   } else {
     list = g.length ? g.map((x) => `<div class="ana-item"><div class="head"><span class="big" style="font-size:17px">${esc(x.pattern)}</span>
         ${x.jlpt ? `<span class="jlpt">${esc(x.jlpt)}</span>` : ""}</div>

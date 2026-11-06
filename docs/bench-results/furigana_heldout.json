@@ -1,0 +1,74 @@
+{
+ "sentences": 40,
+ "kanjiUnits": 128,
+ "kanjiWords": 130,
+ "accuracyPct": 100.0,
+ "agreeWithoutGoldPct": 92.97,
+ "disagreements": [
+  {
+   "sentence": "鉛筆を十本と消しゴムを一個ください。",
+   "surface": "十本",
+   "tool": "じゅっぽん",
+   "openjtalk": "じゅうほん",
+   "gold": "じゅっぽん/じっぽん"
+  },
+  {
+   "sentence": "鉛筆を十本と消しゴムを一個ください。",
+   "surface": "一個",
+   "tool": "いっこ",
+   "openjtalk": "いちこ",
+   "gold": "いっこ"
+  },
+  {
+   "sentence": "この建物は三階建てです。",
+   "surface": "三階",
+   "tool": "さんがい",
+   "openjtalk": "さんかい",
+   "gold": "さんがい/さんかい"
+  },
+  {
+   "sentence": "四人分のケーキを予約しました。",
+   "surface": "四人",
+   "tool": "よにん",
+   "openjtalk": "よんにん",
+   "gold": "よにん"
+  },
+  {
+   "sentence": "四年ぶりに国へ帰ります。",
+   "surface": "四年",
+   "tool": "よねん",
+   "openjtalk": "よんねん",
+   "gold": "よねん"
+  },
+  {
+   "sentence": "九時から五時まで働いています。",
+   "surface": "九時",
+   "tool": "くじ",
+   "openjtalk": "きゅうじ",
+   "gold": "くじ"
+  },
+  {
+   "sentence": "彼女は二十歳になったばかりです。",
+   "surface": "二十歳",
+   "tool": "はたち",
+   "openjtalk": "にじゅうさい",
+   "gold": "はたち/にじゅっさい"
+  },
+  {
+   "sentence": "本を一冊読み終えました。",
+   "surface": "一冊",
+   "tool": "いっさつ",
+   "openjtalk": "いちさつ",
+   "gold": "いっさつ"
+  },
+  {
+   "sentence": "次の角を右に曲がってください。",
+   "surface": "角",
+   "tool": "かど",
+   "openjtalk": "かく",
+   "gold": "かど"
+  }
+ ],
+ "wrong": [],
+ "inconsistentFurigana": []
+}

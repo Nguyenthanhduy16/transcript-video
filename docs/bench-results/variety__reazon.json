@@ -1,0 +1,60 @@
+{
+ "file": "variety",
+ "engine": "reazon",
+ "condition": "ồn đám đông SNR 18 dB",
+ "audioSec": 198.17,
+ "cues": 96,
+ "gtLines": 60,
+ "asrSec": 22.33,
+ "nlpSec": 0.01,
+ "rtf": 0.1127,
+ "cerPct": 10.2,
+ "cerReadingPct": 7.3,
+ "timing": {
+  "lines": 60,
+  "okBothPct": 95.0,
+  "okStartPct": 96.7,
+  "medianStartMs": 19,
+  "p90StartMs": 117,
+  "medianEndMs": 84,
+  "p90EndMs": 122
+ },
+ "speaker_auto": {
+  "accPct": 96.7,
+  "found": 4,
+  "truth": 3,
+  "sec": 2.39
+ },
+ "speaker_known": {
+  "accPct": 96.7,
+  "found": 3,
+  "truth": 3,
+  "sec": 2.43
+ },
+ "samples": [
+  {
+   "gt": "はい、始まりました！週末グルメ探検隊！",
+   "hyp": "はい始まりました週末グルメ探検隊"
+  },
+  {
+   "gt": "今日のゲストは、このお二人です。",
+   "hyp": "今日のゲストはこのお二人です"
+  },
+  {
+   "gt": "こんにちは！よろしくお願いします。",
+   "hyp": "こんにちはよろしくお願い"
+  },
+  {
+   "gt": "どうも、よろしくお願いします。",
+   "hyp": "どうもよろしくお願い"
+  },
+  {
+   "gt": "今日は、大阪の下町でおいしいお店を探します。",
+   "hyp": "今日は大阪の下町でおいしいお店を探します"
+  },
+  {
+   "gt": "えー、楽しみ！朝ご飯を抜いてきました。",
+   "hyp": "えっ楽しみ朝ご飯を抜いてきました"
+  }
+ ]
+}

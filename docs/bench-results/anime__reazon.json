@@ -1,0 +1,60 @@
+{
+ "file": "anime",
+ "engine": "reazon",
+ "condition": "nhạc nền SNR 15 dB",
+ "audioSec": 178.89,
+ "cues": 109,
+ "gtLines": 60,
+ "asrSec": 20.24,
+ "nlpSec": 0.02,
+ "rtf": 0.1132,
+ "cerPct": 33.02,
+ "cerReadingPct": 14.86,
+ "timing": {
+  "lines": 60,
+  "okBothPct": 76.7,
+  "okStartPct": 85.0,
+  "medianStartMs": 21,
+  "p90StartMs": 780,
+  "medianEndMs": 81,
+  "p90EndMs": 207
+ },
+ "speaker_auto": {
+  "accPct": 88.3,
+  "found": 8,
+  "truth": 4,
+  "sec": 1.98
+ },
+ "speaker_known": {
+  "accPct": 91.7,
+  "found": 4,
+  "truth": 4,
+  "sec": 2.14
+ },
+ "samples": [
+  {
+   "gt": "はい、今日の授業はここまでです。",
+   "hyp": "はい今日の授業はここまでです"
+  },
+  {
+   "gt": "明日は漢字のテストがありますから、ちゃんと勉強してくださいね。",
+   "hyp": "あしたはかんじんのテストがありますからちゃんとべんきょうしてくださいね"
+  },
+  {
+   "gt": "えー、またテストかよ。",
+   "hyp": "またテストかよ"
+  },
+  {
+   "gt": "しょうがないだろ、先生が決めたんだから。",
+   "hyp": "しょうがないだろ先生が決めたんだから"
+  },
+  {
+   "gt": "おい、ハル。宿題、忘れたらあかんで。",
+   "hyp": "おいパルしゅくだいわすれたらあかんで"
+  },
+  {
+   "gt": "分かってるって。うるさいなあ。",
+   "hyp": "わかってるって"
+  }
+ ]
+}

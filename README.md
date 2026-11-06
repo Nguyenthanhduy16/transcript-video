@@ -6,19 +6,23 @@ Dán link video (YouTube, trang video khác, file .mp4/.m3u8) hoặc tải file 
 akaiwa-transcript/
 ├── backend/                  FastAPI + pipeline Python
 │   ├── app/main.py           API + phục vụ frontend
-│   ├── app/jobs.py           hàng đợi job nền (thread pool, có trạng thái tiến trình)
+│   ├── app/queue.py          hàng đợi: local (thread) hoặc redis (BullMQ) – hợp đồng job với backend
+│   ├── app/worker.py         worker riêng: python -m app.worker
+│   ├── app/errors.py         mã lỗi + lý do tiếng Việt
+│   ├── app/jobs.py           hàng đợi local (thread pool, có trạng thái tiến trình)
 │   ├── app/storage.py        lưu transcript JSON (thay bằng PostgreSQL/S3 khi lên production)
 │   ├── app/pipeline/
 │   │   ├── source.py         yt-dlp + ffmpeg (WAV 16 kHz mono), ưu tiên phụ đề có sẵn
 │   │   ├── subtitles.py      đọc .srt/.vtt/.ass
-│   │   ├── asr.py            faster-whisper / WhisperX (tuỳ chọn), lọc câu Whisper "bịa"
+│   │   ├── asr.py            ReazonSpeech / Whisper (sherpa-onnx, CPU) + khử nhiễu + VAD; faster-whisper/WhisperX (GPU)
 │   │   ├── cues.py           chia/gộp cue 1–7 s, ≤ 32 ký tự; nhận nhạc ♪ / tiếng động （…） / nhãn người nói
-│   │   ├── diarize.py        pyannote (tuỳ chọn) → gán người nói theo độ chồng lấn
+│   │   ├── diarize.py        người nói: embedding 3D-Speaker + gom cụm (CPU); pyannote tuỳ chọn
+│   │   ├── kanji.py          KANJIDIC2: On/Kun/Hán Việt; cache nghĩa tiếng Việt
 │   │   ├── japanese.py       SudachiPy: tách từ, furigana (tách okurigana), romaji Hepburn, kanji
 │   │   ├── translate.py      Claude: dịch theo lô kèm ngữ cảnh + từ vựng/kanji/ngữ pháp (structured output)
 │   │   ├── build.py          ghép JSON, màu người nói, mã phiên bản "sub 6/11 · e501ce"
 │   │   └── run.py            điều phối các bước
-│   └── tests/                pytest (17 test, không cần mạng/GPU)
+│   └── tests/                pytest (33 test, không cần mạng/GPU)
 ├── frontend/                 HTML + JS thuần (ES modules), không cần build
 │   ├── index.html            dán link / upload, tiến trình job, thư viện
 │   ├── watch.html            trang xem 2 cột (video + phụ đề | Hội thoại / Phân tích / Tập)
@@ -26,7 +30,10 @@ akaiwa-transcript/
 ├── scripts/
 │   ├── make_demo.py          tạo video demo + phụ đề tiếng Nhật mẫu
 │   ├── seed_demo.py          chạy pipeline với video demo (LLM giả lập bằng demo_fixture.json)
-│   └── demo_fixture.json
+│   ├── demo_fixture.json
+│   ├── download_models.sh    tải model CPU
+│   ├── build_kanjidic.py     tạo bảng kanji từ KANJIDIC2
+│   └── bench/                benchmark & nghiệm thu: make_bench, eval_asr, eval_furigana, stress_worker, estimate_cost, translation_review
 └── data/                     transcript, media, job (tự tạo khi chạy)
 ```
 
@@ -49,13 +56,69 @@ Mở http://localhost:8000. Video demo có sẵn ở trang xem: `/watch?v=demo-k
 
 ![Trang xem](docs/screenshot-watch.png)
 
-### Bật các bước dùng AI
+### Bật nhận dạng giọng nói, người nói (CPU, không cần GPU)
 
-| Bước | Cách bật | Ghi chú |
+```bash
+scripts/download_models.sh            # ReazonSpeech (ASR tiếng Nhật), Silero VAD, 3D-Speaker; thêm --whisper cho Whisper small
+```
+
+Model nằm ở `models/` (không commit). `GET /api/health` cho biết engine đang dùng.
+
+### Bật dịch và phân tích (Claude)
+
+```bash
+export ANTHROPIC_API_KEY=...
+```
+
+Không có key thì pipeline vẫn chạy (ASR, furigana, người nói, kanji từ KANJIDIC2), chỉ bỏ bước dịch và ghi cảnh báo.
+Sau khi có key, bấm "Dịch lại" trong trang Sửa.
+
+### Chạy worker riêng với hàng đợi Redis (BullMQ)
+
+API chỉ đẩy job; một hoặc nhiều worker nhận job và xử lý. Backend NestJS của nhóm dùng chung hàng đợi `transcript`
+(hợp đồng dữ liệu ghi trong `backend/app/queue.py`). API và worker phải dùng chung `DATA_DIR`
+(ổ mạng hoặc volume) để đọc file upload.
+
+```bash
+redis-server --port 6379
+```
+
+```bash
+cd backend && QUEUE_BACKEND=redis REDIS_URL=redis://localhost:6379 python -m app.worker --concurrency 1
+```
+
+```bash
+cd backend && QUEUE_BACKEND=redis REDIS_URL=redis://localhost:6379 uvicorn app.main:app --port 8000
+```
+
+Job lỗi tạm thời (mạng, timeout) được thử lại 2 lần. Lỗi vĩnh viễn trả về ngay dạng `MÃ: lý do`
+(bảng mã lỗi trong `docs/nghiem-thu-P1.md`). Worker bị tắt đột ngột thì job tự trả về hàng đợi.
+
+### Biến môi trường
+
+| Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| Dịch và phân tích (Claude) | `export ANTHROPIC_API_KEY=...` | Model mặc định `claude-opus-5-5`, đổi bằng `LLM_MODEL`. Lô `LLM_BATCH_SIZE=30` cue, ngữ cảnh 6 câu trước và 3 câu sau. Có bật fallback phía server khi model từ chối. Không có key thì pipeline vẫn chạy, chỉ bỏ bước dịch và ghi cảnh báo. |
-| ASR (video chưa có phụ đề) | `pip install faster-whisper`, hoặc `ASR_ENGINE=whisperx` + `pip install whisperx` | Mặc định `large-v3`, `vad_filter`, mốc thời gian từng từ. Nên có GPU. |
-| Người nói | `pip install pyannote.audio` + `HF_TOKEN=...` | Chỉ chạy khi phụ đề không có sẵn nhãn （tên）. |
+| `QUEUE_BACKEND` | `local` | `local` = thread trong process API (dev) · `redis` = BullMQ + worker riêng |
+| `REDIS_URL`, `QUEUE_NAME` | `redis://localhost:6379`, `transcript` | Kết nối hàng đợi |
+| `DATA_DIR` | `./data` | Transcript, media, job, cache nghĩa kanji |
+| `MODELS_DIR` | `./models` | Model sherpa-onnx |
+| `ASR_ENGINE` | `auto` | `auto` (ReazonSpeech nếu có) · `reazon` · `whisper-onnx` · `faster-whisper` · `whisperx` |
+| `ASR_DENOISE` | `vad` | Khử nhiễu GTCRN để cắt câu: `vad` · `both` · `auto` · `off` |
+| `VAD_THRESHOLD`, `VAD_MIN_SILENCE` | `0.5`, `0.25` | Tham số Silero VAD |
+| `ASR_THREADS` | số CPU (≤ 8) | Luồng CPU cho ASR |
+| `DIARIZE`, `DIARIZE_THRESHOLD` | `auto`, `0.5` | Người nói: `auto`/`embedding` · `pyannote` (cần `HF_TOKEN`) · `off` |
+| `LLM_PROFILE` | `quality` | `quality` = Opus 5.5 cho mọi bước · `economy` = dịch Sonnet 5.5 + phân tích Haiku 5.5, effort low |
+| `LLM_MODEL`, `LLM_ANALYSIS_MODEL`, `LLM_EFFORT` | theo profile | Ghi đè model dịch / model phân tích / effort |
+| `LLM_BATCH_SIZE`, `LLM_CONCURRENCY` | `30`, `4` | Số câu mỗi lô, số lô chạy song song |
+| `LLM_PROVIDER` | `anthropic` | `none` = tắt bước dịch |
+| `MAX_DURATION_MIN`, `MAX_DOWNLOAD_MB` | `180`, `2048` | Giới hạn video |
+
+Job transcript nhận thêm `num_speakers` (biết trước số người nói → gán chính xác hơn).
+
+### Benchmark và nghiệm thu
+
+Kết quả đo P1-1 → P1-5 và cách chạy lại: [`docs/nghiem-thu-P1.md`](docs/nghiem-thu-P1.md).
+Định dạng JSON đầu ra: [`docs/transcript.schema.json`](docs/transcript.schema.json).
 
 Chạy test:
 

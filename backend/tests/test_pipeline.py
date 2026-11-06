@@ -79,7 +79,7 @@ def test_parse_srt_and_normalize(tmp_path):
     cues = normalize_cues(parse_subtitle_file(p), "ja")
     assert [c["type"] for c in cues] == ["music", "speech"]
     assert cues[1]["speaker"] == "チエ" and cues[1]["text"] == "分かってるわい"
-    assert cues[1]["end"] - cues[1]["start"] >= 1.0      # kéo dài cue quá ngắn
+    assert cues[1]["end"] == 4.3                         # giữ đúng mốc kết thúc (không kéo dài)
 
 
 def test_translator_merge_with_mock():
@@ -93,17 +93,20 @@ def test_translator_merge_with_mock():
         seen.update(payload)
         return BatchOut.model_validate({"cues": [{
             "id": 1, "translation": "Quên bài tập rồi.",
-            "vocab": [{"lemma": "宿題", "reading": "しゅくだい", "meaning": "bài tập về nhà", "jlpt": "N5"}],
-            "kanji": [{"char": "宿", "on": ["シュク"], "kun": ["やど"], "hanViet": "TÚC", "meaning": "trọ"}],
+            "vocab": [{"lemma": "宿題", "meaning": "bài tập về nhà", "jlpt": "N5"}],
             "grammar": []}]})
 
     tr = Translator.__new__(Translator)
     tr._call = fake_call.__get__(tr)
+    tr._kanji_meanings = lambda chars: {c: "nghĩa " + c for c in chars}
     warns = tr.process(cues)
-    assert [c["id"] for c in seen["CAN_XU_LY"]] == [1]          # cue tiếng động không gửi đi dịch
+    assert [c["id"] for c in seen["can_xu_ly"]] == [1]          # cue tiếng động không gửi đi dịch
     assert cues[0]["translation"] == "Quên bài tập rồi."
     v = {x["lemma"]: x for x in cues[0]["vocab"]}
-    assert v["宿題"]["meaning"] == "bài tập về nhà"
+    assert v["宿題"]["meaning"] == "bài tập về nhà" and v["宿題"]["reading"] == "しゅくだい"
+    k = {x["char"]: x for x in cues[0]["kanji"]}
+    assert k["宿"]["hanViet"].startswith("TÚC") and "シュク" in k["宿"]["on"]      # từ KANJIDIC2
+    assert k["宿"]["meaning"] == "nghĩa 宿"                                       # nghĩa VI qua cache
     assert "忘れる" in v and v["忘れる"]["meaning"] == ""          # từ LLM bỏ sót vẫn giữ
     assert cues[1]["translation"] == "" and cues[1]["vocab"] == []
     assert warns == []
@@ -146,3 +149,49 @@ def test_api_upload_flow(tmp_path):
     srt_out = c.get(f"/api/videos/{j['videoId']}/export.srt").text
     assert "00:00:00,500 --> 00:00:02,500" in srt_out and "Thật không?" in srt_out
     c.delete(f"/api/videos/{j['videoId']}")
+
+
+# ------------------------------------------------------------------ bổ sung cho P1-2…P1-4
+@pytest.mark.parametrize("text,word,reading", [
+    ("今日は四月一日です。", "一日", "ついたち"), ("二十日に来ます。", "二十日", "はつか"),
+    ("みかんを八つ買った", "八つ", "やっつ"), ("三十分待って", "三十分", "さんじゅっぷん"),
+    ("時間は十分です。", "十分", "じゅうぶん"), ("鉛筆を六本", "六本", "ろっぽん"),
+    ("三階建て", "三階", "さんがい"), ("四人分", "四人", "よにん"), ("一年中", "一年中", "いちねんじゅう"),
+    ("和菓子作り", "作り", "づくり"), ("富士山の水", "富士山", "ふじさん"), ("一昨日", "一昨日", "おととい"),
+])
+def test_number_and_special_readings(text, word, reading):
+    toks = {t["surface"]: t["reading"] for t in ja.tokenize(text)}
+    assert toks.get(word) == reading, toks
+
+
+def test_merge_fragments_nearest_neighbor():
+    from app.pipeline.cues import merge_fragments
+    cues = [{"start": 0.0, "end": 0.6, "text": "こんばんは"}, {"start": 0.8, "end": 2.5, "text": "七時のニュースです"},
+            {"start": 3.4, "end": 3.9, "text": "まず"}, {"start": 5.0, "end": 7.0, "text": "天気です"}]
+    out = merge_fragments(cues)
+    assert out[0]["text"] == "こんばんは七時のニュースです"      # gap 0,2 s → gộp
+    assert [c["text"] for c in out[1:]] == ["まず", "天気です"]    # gap > 0,35 s → giữ riêng
+
+
+def test_error_classification():
+    from app.errors import classify_exception
+    from app.pipeline.source import SourceError
+    e = classify_exception(SourceError("Không tải được link (HTTP 404).", "SOURCE_NOT_FOUND"))
+    assert e.code == "SOURCE_NOT_FOUND" and not e.retryable
+    assert classify_exception(SourceError("timeout", "SOURCE_TIMEOUT", True)).retryable
+    assert classify_exception(ValueError("x")).code == "INTERNAL"
+
+
+def test_kind_of_rejects_non_http():
+    from app.pipeline.source import SourceError, kind_of
+    with pytest.raises(SourceError) as ei:
+        kind_of("ftp://example.com/a.mp4")
+    assert ei.value.code == "UNSUPPORTED_URL"
+    assert kind_of("https://youtu.be/abc123XYZ") == "youtube"
+    assert kind_of("https://x.com/v/a.m3u8") == "media"
+
+
+def test_kanjidic_lookup():
+    from app.pipeline import kanji
+    k = kanji.lookup("漢")
+    assert k["hanViet"].startswith("HÁN") and "カン" in k["on"] and k["strokes"] == 13

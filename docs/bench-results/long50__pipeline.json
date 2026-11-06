@@ -1,0 +1,31 @@
+{
+ "file": "long50",
+ "audioSec": 3113.17,
+ "cues": 1405,
+ "gtLines": 900,
+ "cerPct": 19.03,
+ "cerReadingPct": 8.06,
+ "timing": {
+  "lines": 900,
+  "okBothPct": 81.2,
+  "okStartPct": 86.4,
+  "medianStartMs": 21,
+  "p90StartMs": 836,
+  "medianEndMs": 179,
+  "p90EndMs": 234
+ },
+ "speaker_auto": {
+  "accPct": 44.4,
+  "found": 6,
+  "truth": 11
+ },
+ "stats": {
+  "asrSec": 301.32,
+  "asrEngine": "reazon",
+  "speakersFound": 8,
+  "diarizeSec": 41.53,
+  "nlpSec": 0.22,
+  "totalSec": 344.55,
+  "cueCount": 1405
+ }
+}

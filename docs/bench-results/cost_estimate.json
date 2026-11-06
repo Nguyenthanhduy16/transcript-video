@@ -1,0 +1,128 @@
+{
+ "info": {
+  "audioMin": 51.9,
+  "speechCues": 1405,
+  "batches": 47,
+  "vocabItems": 3550,
+  "kanjiOccurrences": 3411,
+  "uniqueKanji": 361,
+  "inputTokensOpt": 51925,
+  "outputTokensOpt": 159611,
+  "inputTokensOld": 93450,
+  "outputTokensOld": 280536
+ },
+ "rows": [
+  [
+   "claude-opus-5-5",
+   "ban đầu",
+   "low",
+   6.069,
+   11.537
+  ],
+  [
+   "claude-opus-5-5",
+   "ban đầu",
+   "medium",
+   7.753,
+   15.184
+  ],
+  [
+   "claude-opus-5-5",
+   "tối ưu",
+   "low",
+   3.481,
+   6.638
+  ],
+  [
+   "claude-opus-5-5",
+   "tối ưu",
+   "medium",
+   4.456,
+   8.751
+  ],
+  [
+   "claude-sonnet-5-5",
+   "ban đầu",
+   "low",
+   3.035,
+   5.769
+  ],
+  [
+   "claude-sonnet-5-5",
+   "ban đầu",
+   "medium",
+   3.876,
+   7.592
+  ],
+  [
+   "claude-sonnet-5-5",
+   "tối ưu",
+   "low",
+   1.743,
+   3.322
+  ],
+  [
+   "claude-sonnet-5-5",
+   "tối ưu",
+   "medium",
+   2.23,
+   4.378
+  ],
+  [
+   "claude-haiku-5-5",
+   "ban đầu",
+   "low",
+   0.152,
+   0.288
+  ],
+  [
+   "claude-haiku-5-5",
+   "ban đầu",
+   "medium",
+   0.194,
+   0.38
+  ],
+  [
+   "claude-haiku-5-5",
+   "tối ưu",
+   "low",
+   0.087,
+   0.166
+  ],
+  [
+   "claude-haiku-5-5",
+   "tối ưu",
+   "medium",
+   0.112,
+   0.219
+  ],
+  [
+   "opus+haiku",
+   "tách",
+   "low",
+   0.895,
+   1.602
+  ],
+  [
+   "opus+haiku",
+   "tách",
+   "medium",
+   1.098,
+   2.041
+  ],
+  [
+   "sonnet+haiku",
+   "tách",
+   "low",
+   0.486,
+   0.872
+  ],
+  [
+   "sonnet+haiku",
+   "tách",
+   "medium",
+   0.597,
+   1.113
+  ]
+ ]
+}

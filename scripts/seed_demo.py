@@ -24,16 +24,13 @@ fx = json.loads((ROOT / "scripts" / "demo_fixture.json").read_text(encoding="utf
 
 def fake_call(self, payload):
     out = []
-    for c in payload["CAN_XU_LY"]:
+    for c in payload["can_xu_ly"]:
         text = c["goc"]
         out.append({
             "id": c["id"],
             "translation": fx["translations"].get(text, ""),
-            "vocab": [{"lemma": l, "reading": "", "meaning": fx["vocab"][l][0], "jlpt": fx["vocab"][l][1]}
-                      for l in c["ung_vien_tu_vung"] if l in fx["vocab"]],
-            "kanji": [{"char": k, "on": fx["kanji"][k][0], "kun": fx["kanji"][k][1],
-                       "hanViet": fx["kanji"][k][2], "meaning": fx["kanji"][k][3]}
-                      for k in c["kanji"] if k in fx["kanji"]],
+            "vocab": [{"lemma": l, "meaning": fx["vocab"][l][0], "jlpt": fx["vocab"][l][1]}
+                      for l in c["tu_vung"] if l in fx["vocab"]],
             "grammar": [{"pattern": g[0], "meaning": g[1], "explanation": g[2], "jlpt": g[3]}
                         for g in fx["grammar"].get(text, [])],
         })
@@ -43,6 +40,7 @@ def fake_call(self, payload):
 if "--real" not in sys.argv:
     Translator.__init__ = lambda self, *a, **k: setattr(self, "system", "")  # không cần API key
     Translator._call = fake_call
+    Translator._kanji_meanings = lambda self, chars: {k: fx["kanji"][k][3] for k in chars if k in fx["kanji"]}
 
 video_id = "demo-kansai-01"
 mdir = source.media_dir(video_id)

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cnweb/transcript.schema.json",
+  "title": "Transcript song ngữ (đầu ra tool transcript – Người 1 → Backend Người 3)",
+  "description": "Một tập video. Thời gian tính bằng giây (số thực, 3 chữ số thập phân). Backend lưu cues vào bảng subtitle_lines: start_ms = round(start*1000), end_ms = round(end*1000), tokens → JSONB.",
+  "type": "object",
+  "required": ["videoId", "lang", "target", "player", "cues", "version"],
+  "properties": {
+    "videoId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,80}$"},
+    "title": {"type": "string"},
+    "series": {"type": "string"},
+    "episode": {"type": ["integer", "null"]},
+    "lang": {"type": "string", "description": "ngôn ngữ gốc (ISO 639-1), vd. ja"},
+    "target": {"type": "string", "description": "ngôn ngữ dịch, vd. vi"},
+    "duration": {"type": ["number", "null"]},
+    "player": {
+      "oneOf": [
+        {"type": "object", "required": ["type", "youtubeId"], "properties": {"type": {"const": "youtube"}, "youtubeId": {"type": "string"}}},
+        {"type": "object", "required": ["type", "src"], "properties": {"type": {"const": "html5"}, "src": {"type": "string", "description": "đường dẫn mp4/m3u8"}}}
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {"enum": ["youtube", "media", "page", "upload"]},
+        "url": {"type": "string"},
+        "subtitle": {"enum": ["youtube_manual", "youtube_auto", "upload", "asr", null], "description": "transcript lấy từ đâu"}
+      }
+    },
+    "speakers": {
+      "type": "array",
+      "items": {"type": "object", "required": ["name", "display", "color"],
+                "properties": {"name": {"type": "string", "description": "khoá dùng trong cue.speaker"},
+                               "display": {"type": "string", "description": "tên hiển thị (biên tập viên sửa)"},
+                               "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}}}
+    },
+    "version": {"type": "string", "description": "6 ký tự đầu SHA-256 nội dung – đổi khi transcript đổi"},
+    "credit": {"type": "string", "description": "vd. 'sub 6/11 · e501ce'"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "needsAnalysis": {"type": "array", "items": {"type": "integer"}, "description": "id cue đã sửa tay, chưa phân tích lại"},
+    "stats": {"type": "object", "description": "thời gian từng bước, engine ASR, token/chi phí LLM"},
+    "cues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "start", "end", "type", "text"],
+        "properties": {
+          "id": {"type": "integer", "minimum": 1},
+          "start": {"type": "number", "minimum": 0},
+          "end": {"type": "number", "description": "lúc hết tiếng nói (không kéo dài); frontend tự giữ phụ đề ≥ 1 s"},
+          "speaker": {"type": ["string", "null"]},
+          "multiSpeaker": {"type": "boolean", "description": "true: text chứa nhiều nhãn （tên）"},
+          "type": {"enum": ["speech", "music", "sfx"]},
+          "text": {"type": "string"},
+          "romaji": {"type": "string"},
+          "translation": {"type": "string"},
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["surface", "reading", "lemma", "pos", "furigana", "isWord"],
+              "properties": {
+                "surface": {"type": "string"},
+                "reading": {"type": "string", "description": "hiragana"},
+                "lemma": {"type": "string", "description": "dạng từ điển"},
+                "lemmaReading": {"type": "string"},
+                "pos": {"type": "string", "description": "noun | verb | i-adjective | na-adjective | adverb | particle | auxiliary | interjection | pronoun | symbol | space | speaker | …"},
+                "posJa": {"type": "string"},
+                "furigana": {"type": "array", "items": {"type": "array", "prefixItems": [{"type": "string"}, {"type": ["string", "null"]}]},
+                             "description": "[[mặt chữ, ruby|null], …] – ruby chỉ trên kanji"},
+                "romaji": {"type": "string"},
+                "isWord": {"type": "boolean", "description": "từ nội dung, hiện popup tra từ / đưa vào vocab"}
+              }
+            }
+          },
+          "vocab": {"type": "array", "items": {"type": "object", "required": ["lemma", "reading", "meaning"],
+                    "properties": {"lemma": {"type": "string"}, "reading": {"type": "string"}, "pos": {"type": "string"},
+                                   "meaning": {"type": "string"}, "jlpt": {"type": ["string", "null"]}}}},
+          "kanji": {"type": "array", "items": {"type": "object", "required": ["char"],
+                    "properties": {"char": {"type": "string"}, "on": {"type": "array", "items": {"type": "string"}},
+                                   "kun": {"type": "array", "items": {"type": "string"}}, "hanViet": {"type": "string"},
+                                   "meaning": {"type": "string"}}}},
+          "grammar": {"type": "array", "items": {"type": "object", "required": ["pattern", "meaning"],
+                      "properties": {"pattern": {"type": "string"}, "meaning": {"type": "string"},
+                                     "explanation": {"type": "string"}, "jlpt": {"type": ["string", "null"]}}}}
+        }
+      }
+    }
+  }
+}

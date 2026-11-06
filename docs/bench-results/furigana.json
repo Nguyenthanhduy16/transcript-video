@@ -1,0 +1,194 @@
+{
+ "sentences": 231,
+ "kanjiUnits": 731,
+ "kanjiWords": 731,
+ "accuracyPct": 99.73,
+ "agreeWithoutGoldPct": 96.72,
+ "disagreements": [
+  {
+   "sentence": "こんばんは。七時のニュースです。",
+   "surface": "七時",
+   "tool": "しちじ",
+   "openjtalk": "ななじ",
+   "gold": "しちじ/ななじ"
+  },
+  {
+   "sentence": "今日は東日本を中心に強い雨が降りました。",
+   "surface": "東日本",
+   "tool": "ひがしにほん",
+   "openjtalk": "ひがしにっぽん",
+   "gold": "ひがしにほん/ひがしにっぽん"
+  },
+  {
+   "sentence": "今日は東日本を中心に強い雨が降りました。",
+   "surface": "降り",
+   "tool": "ふり",
+   "openjtalk": "おり",
+   "gold": "ふり"
+  },
+  {
+   "sentence": "気象庁によりますと、明日の朝まで大雨に注意が必要です。",
+   "surface": "明日",
+   "tool": "あす",
+   "openjtalk": "あした",
+   "gold": "あした/あす"
+  },
+  {
+   "sentence": "最後に、明日の天気です。",
+   "surface": "明日",
+   "tool": "あす",
+   "openjtalk": "あした",
+   "gold": "あした/あす"
+  },
+  {
+   "sentence": "今後一週間ほどは、同じ程度の揺れに注意してください。",
+   "surface": "一週間",
+   "tool": "いっしゅうかん",
+   "openjtalk": "いちしゅうかん",
+   "gold": "いっしゅうかん"
+  },
+  {
+   "sentence": "以上、七時のニュースでした。",
+   "surface": "七時",
+   "tool": "しちじ",
+   "openjtalk": "ななじ",
+   "gold": "しちじ/ななじ"
+  },
+  {
+   "sentence": "明日は漢字のテストがありますから、ちゃんと勉強してくださいね。",
+   "surface": "明日",
+   "tool": "あす",
+   "openjtalk": "あした",
+   "gold": "あした/あす"
+  },
+  {
+   "sentence": "なんか、明日はいい天気になりそうだね。",
+   "surface": "明日",
+   "tool": "あす",
+   "openjtalk": "あした",
+   "gold": "あした/あす"
+  },
+  {
+   "sentence": "そういえば、明日のテストって何ページからやった？",
+   "surface": "明日",
+   "tool": "あす",
+   "openjtalk": "あした",
+   "gold": "あした/あす"
+  },
+  {
+   "sentence": "もちろん。七時に集合な。",
+   "surface": "七時",
+   "tool": "しちじ",
+   "openjtalk": "ななじ",
+   "gold": "しちじ/ななじ"
+  },
+  {
+   "sentence": "了解！じゃあ、また後でね。",
+   "surface": "後",
+   "tool": "あと",
+   "openjtalk": "ご",
+   "gold": "あと"
+  },
+  {
+   "sentence": "親切の切は、切るって字やで。",
+   "surface": "切",
+   "tool": "きれ",
+   "openjtalk": "きり",
+   "gold": "せつ"
+  },
+  {
+   "sentence": "明日、絶対いい点取ろな。",
+   "surface": "明日",
+   "tool": "あす",
+   "openjtalk": "あした",
+   "gold": "あした/あす"
+  },
+  {
+   "sentence": "残り時間は十分です。",
+   "surface": "十分",
+   "tool": "じゅうぶん",
+   "openjtalk": "じゅうぶん",
+   "gold": "じゅっぷん"
+  },
+  {
+   "sentence": "店長さん、このソースの秘密は何ですか？",
+   "surface": "何",
+   "tool": "なん",
+   "openjtalk": "なに",
+   "gold": "なん"
+  },
+  {
+   "sentence": "三十分待って、ついに順番が来ました。",
+   "surface": "三十分",
+   "tool": "さんじゅっぷん",
+   "openjtalk": "さんじゅうふん",
+   "gold": "さんじゅっぷん/さんじっぷん"
+  },
+  {
+   "sentence": "口の中ですぐ溶けますね。不思議な食感です。",
+   "surface": "食感",
+   "tool": "しょっかん",
+   "openjtalk": "しょくかん",
+   "gold": "しょっかん"
+  },
+  {
+   "sentence": "お値段は、なんと一枚六百円です。",
+   "surface": "六百円",
+   "tool": "ろっぴゃくえん",
+   "openjtalk": "ろくひゃくえん",
+   "gold": "ろっぴゃくえん"
+  },
+  {
+   "sentence": "駅から歩いて十分ぐらいです。",
+   "surface": "十分",
+   "tool": "じゅっぷん",
+   "openjtalk": "じゅうぶん",
+   "gold": "じゅっぷん/じっぷん"
+  },
+  {
+   "sentence": "雨が降りそうなので、傘を持っていきます。",
+   "surface": "降り",
+   "tool": "ふり",
+   "openjtalk": "おり",
+   "gold": "ふり"
+  },
+  {
+   "sentence": "祖父は八十歳になりました。",
+   "surface": "八十歳",
+   "tool": "はちじゅっさい",
+   "openjtalk": "はちじゅうさい",
+   "gold": "はちじゅっさい/はちじゅうさい"
+  },
+  {
+   "sentence": "明後日までに返事をください。",
+   "surface": "明後日",
+   "tool": "あさって",
+   "openjtalk": "みょうごにち",
+   "gold": "あさって"
+  },
+  {
+   "sentence": "一昨日、久しぶりに雪が降りました。",
+   "surface": "降り",
+   "tool": "ふり",
+   "openjtalk": "おり",
+   "gold": "ふり"
+  }
+ ],
+ "wrong": [
+  {
+   "sentence": "親切の切は、切るって字やで。",
+   "surface": "切",
+   "tool": "きれ",
+   "openjtalk": "きり",
+   "gold": "せつ"
+  },
+  {
+   "sentence": "残り時間は十分です。",
+   "surface": "十分",
+   "tool": "じゅうぶん",
+   "openjtalk": "じゅうぶん",
+   "gold": "じゅっぷん"
+  }
+ ],
+ "inconsistentFurigana": []
+}

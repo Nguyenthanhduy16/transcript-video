@@ -5,8 +5,8 @@ import hashlib
 import json
 from datetime import datetime, timezone
 
-from . import japanese
-from .cues import classify, ensure_min_duration, split_speaker
+from . import japanese, kanji as kanjidic
+from .cues import classify, split_speaker
 
 SPEAKER_COLORS = ["#F4A261", "#E76F51", "#2A9D8F", "#8AB17D", "#E9C46A", "#9B5DE5",
                   "#F15BB5", "#00BBF9", "#00C49A", "#FF6B6B", "#6C8EBF", "#B5838D"]
@@ -29,7 +29,8 @@ def normalize_cues(raw: list[dict], lang: str) -> list[dict]:
         cues.append({"id": 0, "start": round(c["start"], 3), "end": round(c["end"], 3),
                      "speaker": speaker, "type": ctype, "text": text, "multiSpeaker": multi})
     cues.sort(key=lambda x: x["start"])
-    ensure_min_duration(cues)
+    # mốc end giữ đúng lúc hết tiếng nói (để đồng bộ/tự dừng chính xác);
+    # thời gian hiển thị tối thiểu 1 s do frontend lo.
     for i, c in enumerate(cues, 1):
         c["id"] = i
     return cues
@@ -56,7 +57,7 @@ def enrich_cue(c: dict, lang: str) -> None:
         c["_kanji"] = []
     # giá trị mặc định khi chưa có LLM
     c.setdefault("vocab", [{**v, "meaning": "", "jlpt": None} for v in c["_cand"]])
-    c.setdefault("kanji", [{"char": k, "on": [], "kun": [], "hanViet": "", "meaning": ""} for k in c["_kanji"]])
+    c.setdefault("kanji", kanjidic.lookup_many(c["_kanji"]))       # KANJIDIC2: On/Kun/Hán Việt (không cần LLM)
     c.setdefault("grammar", [])
 
 

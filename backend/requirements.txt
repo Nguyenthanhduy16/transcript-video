@@ -13,3 +13,13 @@ httpx>=0.27
 # faster-whisper>=1.0     -> ASR
 # whisperx>=3.1           -> căn thời gian tới từng từ
 # pyannote.audio>=3.1     -> diarization (cần HF token)
+# ASR/người nói chạy CPU (mặc định) – model tải bằng scripts/download_models.sh
+sherpa-onnx>=1.12
+soundfile>=0.12
+scipy>=1.11
+numpy>=1.26
+# Hàng đợi Redis (QUEUE_BACKEND=redis)
+bullmq>=2.0
+# Benchmark (scripts/bench)
+pyopenjtalk>=0.4
+jsonschema>=4.0
