@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sửa transcript</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=Quicksand:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-dot">字</span><span class="brand-text">Video Transcript</span></a>
+    <span class="spacer"></span>
+    <a class="btn small" id="watchLink" href="#">Xem</a>
+    <button class="btn small primary" id="saveBtn">Lưu thay đổi</button>
+  </header>
+  <main class="container" style="max-width:1500px">
+    <div class="edit-layout">
+      <div class="edit-left">
+        <div class="player-wrap"><div id="player"></div></div>
+        <div class="card">
+          <div class="form-row"><label>Tiêu đề</label><input id="fTitle"></div>
+          <div class="form-inline">
+            <div class="form-row"><label>Series</label><input id="fSeries"></div>
+            <div class="form-row" style="max-width:90px"><label>Tập</label><input id="fEpisode" type="number"></div>
+          </div>
+          <div class="form-row"><label>Bảng thuật ngữ cho LLM</label><textarea id="fGlossary" rows="3"></textarea></div>
+          <h2 style="font-size:15px;margin-top:6px">Nhân vật <span class="muted" style="font-weight:400;font-size:12px">(tên gốc → tên hiển thị, màu)</span></h2>
+          <div id="speakers"></div>
+        </div>
+        <div class="card">
+          <h2 style="font-size:15px">Dịch / phân tích lại bằng LLM</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn small" id="reChanged">Câu đã sửa (<span id="needCount">0</span>)</button>
+            <button class="btn small" id="reAll">Toàn bộ</button>
+          </div>
+          <div id="jobStatus" class="muted" style="font-size:13px;margin-top:8px"></div>
+          <h2 style="font-size:15px;margin-top:14px">Xuất file</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="exports"></div>
+          <div id="warnings" style="margin-top:10px"></div>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:visible">
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 14px">
+          <b>Câu thoại</b><span class="muted" id="cueCount"></span><span style="flex:1"></span>
+          <span class="muted" style="font-size:12px">Bấm # để tua video · <kbd>Alt</kbd>+<kbd>S</kbd> đặt start = thời điểm video</span>
+          <button class="btn small" id="addBtn">+ Thêm câu</button>
+        </div>
+        <table class="cues">
+          <thead><tr><th>#</th><th>Start</th><th>End</th><th>Người nói</th><th>Loại</th><th style="width:34%">Câu gốc</th><th style="width:30%">Bản dịch</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="/js/edit.js"></script>
+</body>
+</html>

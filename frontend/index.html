@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Transcript</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=Quicksand:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-dot">字</span><span class="brand-text">Video Transcript</span></a>
+    <span class="spacer"></span>
+    <span class="muted" id="health" style="font-size:12px"></span>
+    <button class="icon-btn" id="themeBtn" title="Chế độ tối"></button>
+  </header>
+
+  <main class="container">
+    <h1>Học ngoại ngữ qua video</h1>
+    <p class="muted" style="margin-top:0">Dán link video. Hệ thống tạo transcript song ngữ có mốc thời gian, furigana và phân tích từng câu.</p>
+
+    <div class="grid-2" style="margin:20px 0 28px">
+      <form class="card" id="urlForm">
+        <h2>Dán link video</h2>
+        <div class="form-row"><label>Link YouTube, trang video hoặc file .mp4/.m3u8</label>
+          <input name="url" required placeholder="https://www.youtube.com/watch?v=…"></div>
+        <div class="form-inline">
+          <div class="form-row"><label>Series</label><input name="series" placeholder="vd. Jarinko Chie"></div>
+          <div class="form-row" style="max-width:90px"><label>Tập</label><input name="episode" type="number" min="0"></div>
+        </div>
+        <div class="form-inline">
+          <div class="form-row"><label>Ngôn ngữ gốc</label><select name="lang"><option value="ja">Tiếng Nhật</option><option value="ko">Tiếng Hàn</option><option value="zh">Tiếng Trung</option><option value="en">Tiếng Anh</option></select></div>
+          <div class="form-row"><label>Dịch sang</label><select name="target"><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option></select></div>
+        </div>
+        <details style="margin-bottom:12px"><summary class="muted" style="cursor:pointer;font-size:13px">Tuỳ chọn nâng cao</summary>
+          <div class="form-row" style="margin-top:8px"><label>Tiêu đề (để trống = lấy từ video)</label><input name="title"></div>
+          <div class="form-row"><label>Bảng thuật ngữ / ghi chú cho LLM (tên nhân vật, phương ngữ, xưng hô)</label>
+            <textarea name="glossary" rows="3" placeholder="チエ=Chie, ヒラメ=Hirame. Nhân vật nói giọng Osaka, xưng tao–mày."></textarea></div>
+          <label style="display:flex;gap:8px;font-size:14px;margin-bottom:6px"><input type="checkbox" name="allow_auto_subs"> Dùng phụ đề tự động của YouTube nếu không có phụ đề làm tay</label>
+          <label style="display:flex;gap:8px;font-size:14px"><input type="checkbox" name="force_asr"> Bỏ qua phụ đề có sẵn, luôn chạy ASR</label>
+        </details>
+        <button class="btn primary" type="submit">Tạo transcript</button>
+        <p class="muted" style="font-size:12px;margin-bottom:0">Chỉ dùng video bạn có quyền sử dụng. Video YouTube luôn phát qua trình nhúng chính thức.</p>
+      </form>
+
+      <form class="card" id="uploadForm">
+        <h2>Hoặc tải file lên</h2>
+        <div class="form-row"><label>File video/audio</label><input name="video" type="file" accept="video/*,audio/*,.mkv" required></div>
+        <div class="form-row"><label>Phụ đề gốc (.srt/.vtt/.ass), không bắt buộc: có phụ đề thì bỏ qua ASR</label><input name="subtitle" type="file" accept=".srt,.vtt,.ass,.ssa"></div>
+        <div class="form-inline">
+          <div class="form-row"><label>Series</label><input name="series"></div>
+          <div class="form-row" style="max-width:90px"><label>Tập</label><input name="episode" type="number" min="0"></div>
+        </div>
+        <div class="form-row"><label>Tiêu đề</label><input name="title"></div>
+        <div class="form-row"><label>Bảng thuật ngữ cho LLM</label><textarea name="glossary" rows="2"></textarea></div>
+        <input type="hidden" name="lang" value="ja"><input type="hidden" name="target" value="vi">
+        <button class="btn primary" type="submit">Tải lên &amp; xử lý</button>
+      </form>
+    </div>
+
+    <section class="card" style="margin-bottom:28px" id="jobsCard">
+      <h2>Tiến trình xử lý</h2>
+      <div id="jobs"><p class="muted">Chưa có job nào.</p></div>
+    </section>
+
+    <h2>Thư viện</h2>
+    <div class="lib-grid" id="library"></div>
+  </main>
+  <script type="module" src="/js/home.js"></script>
+</body>
+</html>

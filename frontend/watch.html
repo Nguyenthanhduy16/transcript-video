@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xem &amp; học</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;800&family=Quicksand:wght@500;600;700&family=Noto+Serif+JP:wght@500;700&family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Maru+Gothic:wght@500;700&family=Kosugi+Maru&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-dot">字</span><span class="brand-text">Video Transcript</span></a>
+    <span class="spacer"></span>
+    <a class="btn small" id="editLink" href="#">Sửa transcript</a>
+    <button class="icon-btn" id="themeBtn" title="Chế độ tối"></button>
+  </header>
+  <a class="back" href="/">← Thư viện</a>
+
+  <main class="watch" id="watch">
+    <section class="main-col" id="mainCol">
+      <div class="player-wrap" id="playerWrap">
+        <div id="player"></div>
+        <div class="overlay-sub hidden" id="overlaySub"></div>
+      </div>
+      <div class="sub-box" id="subBox"></div>
+      <div class="toolbar" id="toolbar">
+        <div class="dd" id="ddMode">
+          <button class="icon-btn dd-btn" data-dd title="Chế độ xem"><span data-ico="mode"></span><span class="caret">▾</span></button>
+          <div class="dd-menu hidden">
+            <button data-mode="watch">Xem<small>Phát liên tục, transcript chạy theo</small></button>
+            <button data-mode="read">Đọc<small>Dừng sau mỗi câu, Space để đọc tiếp</small></button>
+            <button data-mode="shadow">Nói theo<small>Dừng sau mỗi câu để bạn nhại lại, rồi tự phát tiếp</small></button>
+          </div>
+        </div>
+        <div class="dd" id="ddSub">
+          <button class="icon-btn dd-btn" data-dd title="Kiểu phụ đề"><span data-ico="sub"></span><span class="caret">▾</span></button>
+          <div class="dd-menu hidden">
+            <button data-sub="overlay">Nổi trên video</button>
+            <button data-sub="box">Khung riêng dưới video</button>
+            <button data-sub="off">Tắt phụ đề</button>
+          </div>
+        </div>
+        <button class="icon-btn" id="panelBtn" title="Bật/tắt bảng transcript"><span data-ico="panel"></span></button>
+        <span class="speed-label" id="speedLabel" title="Tốc độ phát ([ và ])">1x</span>
+        <span class="spacer"></span>
+        <button class="icon-btn" id="wordsBtn" title="Sổ từ"><span data-ico="book"></span></button>
+        <button class="icon-btn" id="settingsBtn" title="Cài đặt"><span data-ico="gear"></span></button>
+        <button class="icon-btn" id="helpBtn" title="Trợ giúp"><span data-ico="help"></span></button>
+        <button class="icon-btn" id="fullBtn" title="Toàn màn hình"><span data-ico="full"></span></button>
+      </div>
+    </section>
+
+    <aside class="side" id="side">
+      <nav class="tabs">
+        <button class="tab active" data-tab="dialog">Hội thoại</button>
+        <button class="tab" data-tab="analysis">Phân tích</button>
+        <button class="tab" data-tab="episodes" id="epTab">Tập</button>
+        <button class="icon-btn info-btn" id="infoBtn" title="Trạng thái đồng bộ" style="position:relative"><span data-ico="info"></span><span class="dot" id="syncDot"></span></button>
+      </nav>
+      <div class="tab-body" id="tab-dialog"></div>
+      <div class="tab-body hidden" id="tab-analysis"></div>
+      <div class="tab-body hidden" id="tab-episodes"></div>
+    </aside>
+  </main>
+  <script type="module" src="/js/watch.js"></script>
+</body>
+</html>
