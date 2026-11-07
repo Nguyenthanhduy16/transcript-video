@@ -50,6 +50,7 @@ async function health() {
   if (!r?.ok) { el.innerHTML = `<span class="bad">✗ ${escapeHtml(r?.error || "Không kết nối được")}</span>`; return; }
   const h = r.data;
   el.innerHTML = `<span class="ok">✓ Đã kết nối</span> · ASR: ${h.asr ? escapeHtml(h.asrEngine) : "chưa có"} · người nói: ${escapeHtml(h.diarization)} · hàng đợi: ${escapeHtml(h.queue)}`;
+  if (!h.ffmpeg) el.innerHTML += `<div class="bad">⚠ Máy chạy server chưa cài ffmpeg: nút “Nhận dạng giọng nói” sẽ không chạy. Windows: <code>winget install Gyan.FFmpeg</code> · macOS: <code>brew install ffmpeg</code> · Ubuntu: <code>sudo apt install ffmpeg</code>, rồi mở terminal mới và chạy lại server.</div>`;
 }
 
 async function tabStatus() {

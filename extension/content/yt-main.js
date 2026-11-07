@@ -71,15 +71,30 @@
       key.startsWith(`${videoId}|${lang}|`))?.[1] || null;
   }
 
-  /** Tạm bật phụ đề `lang` trong player để player tự tải (kèm PO token), chờ bắt được nội dung, rồi khôi phục. */
+  /** Dùng lại PO token từ một lần player đã tải phụ đề của video này → tự tải ngôn ngữ cần, không đụng player. */
+  async function fetchWithCapturedToken(videoId, lang, kind) {
+    const any = [...captured.values()].find((v) => keyFromUrl(v.url)?.startsWith(videoId + "|") && v.url.includes("pot="));
+    if (!any) return null;
+    try {
+      const u = new URL(any.url, location.origin);
+      u.searchParams.set("lang", lang);
+      if (kind === "asr") u.searchParams.set("kind", "asr"); else u.searchParams.delete("kind");
+      u.searchParams.delete("tlang");                 // bỏ dịch tự động
+      const t = await (await _fetch(u.toString(), { credentials: "include" })).text();
+      return t && t.trim() ? { body: t, url: u.toString() } : null;
+    } catch { return null; }
+  }
+
+  /** Lấy phụ đề `lang`: (1) đã bắt được, (2) dùng lại token, (3) tạm bật phụ đề trong player rồi trả lại đúng trạng thái cũ. */
   async function captureViaPlayer(lang, kind, timeoutMs = 10000) {
     const p = player();
     const info = tracksInfo();
-    const have = findCaptured(info.videoId, lang, kind);
+    const have = findCaptured(info.videoId, lang, kind) || await fetchWithCapturedToken(info.videoId, lang, kind);
     if (have) return have;
     if (!p || typeof p.setOption !== "function") return null;
     let prev = null;
     try { prev = p.getOption && p.getOption("captions", "track"); } catch {}
+    const wasOn = !!(prev && prev.languageCode);
     try {
       if (typeof p.loadModule === "function") p.loadModule("captions");
       const track = { languageCode: lang };
@@ -93,11 +108,8 @@
       if (got) break;
       await new Promise((r) => setTimeout(r, 250));
     }
-    // khôi phục trạng thái phụ đề trước đó của người dùng
-    try {
-      if (prev && prev.languageCode) p.setOption("captions", "track", prev);
-      else if (typeof p.unloadModule === "function") p.unloadModule("captions");
-    } catch {}
+    // trả phụ đề của người dùng về đúng như trước; KHÔNG unloadModule (làm nút CC hết hiện chữ tới khi tải lại trang)
+    try { p.setOption("captions", "track", wasOn ? prev : {}); } catch {}
     return got;
   }
 

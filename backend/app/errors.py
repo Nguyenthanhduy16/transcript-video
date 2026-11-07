@@ -13,6 +13,10 @@ class PipelineError(RuntimeError):
         self.retryable = retryable
 
 
+FFMPEG_HELP = ("Máy chạy server chưa cài ffmpeg (cần để tách audio từ video). Cài rồi mở terminal mới và chạy lại server: "
+               "Windows: winget install Gyan.FFmpeg · macOS: brew install ffmpeg · Ubuntu: sudo apt install ffmpeg")
+
+
 def classify_exception(e: Exception) -> PipelineError:
     """Chuyển lỗi bất kỳ thành PipelineError có mã."""
     if isinstance(e, PipelineError):
@@ -24,6 +28,8 @@ def classify_exception(e: Exception) -> PipelineError:
         return PipelineError("ASR_UNAVAILABLE", msg)
     if isinstance(e, SourceError):
         return PipelineError(e.code, msg, retryable=e.retryable)
+    if isinstance(e, FileNotFoundError) and any(x in msg for x in ("ffmpeg", "ffprobe")):
+        return PipelineError("FFMPEG_MISSING", FFMPEG_HELP)
     if isinstance(e, MemoryError):
         return PipelineError("OUT_OF_MEMORY", "Hết bộ nhớ khi xử lý – thử video ngắn hơn hoặc tăng RAM worker", True)
     if isinstance(e, (ConnectionError, TimeoutError)):

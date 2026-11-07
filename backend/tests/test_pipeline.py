@@ -180,6 +180,7 @@ def test_error_classification():
     assert e.code == "SOURCE_NOT_FOUND" and not e.retryable
     assert classify_exception(SourceError("timeout", "SOURCE_TIMEOUT", True)).retryable
     assert classify_exception(ValueError("x")).code == "INTERNAL"
+    assert classify_exception(FileNotFoundError(2, "No such file or directory", "ffmpeg")).code == "FFMPEG_MISSING"
 
 
 def test_kind_of_rejects_non_http():

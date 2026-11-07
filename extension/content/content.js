@@ -322,8 +322,11 @@
     }
     // missing
     const t = IS_YT ? jaTrack() : null;
+    // phụ đề tự động (asr) của YouTube có ngôn ngữ = ngôn ngữ nói trong video
+    const spoken = IS_YT ? (ytInfo?.tracks || []).find((x) => x.kind === "asr" && !/^ja/.test(x.lang)) : null;
     body.innerHTML = `<div class="empty"><b>Video này chưa có transcript</b>
       <p class="muted">Tạo một lần, lần sau mở lại sẽ có ngay.</p>
+      ${spoken ? `<p class="err" style="margin-top:0">Video này có vẻ nói ${esc(spoken.name.replace(/\s*\(.*\)$/, ""))}. Tool hiện chỉ hỗ trợ video tiếng Nhật; phụ đề tiếng Nhật (nếu có) có thể chỉ là bản dịch tự động.</p>` : ""}
       ${IS_YT ? (t ? `<button class="btn primary" data-act="subs">Tạo từ phụ đề YouTube<br><span style="font-weight:500;font-size:12px">${esc(t.name)}${t.kind === "asr" ? " (tự động)" : ""}</span></button>`
                    : `<p class="muted" style="font-size:12px">${ytInfo ? "Video không có phụ đề tiếng Nhật." : "Đang đọc danh sách phụ đề…"}</p>`) : ""}
       <button class="btn ${IS_YT && t ? "" : "primary"}" data-act="asr">Nhận dạng giọng nói trên server</button>
