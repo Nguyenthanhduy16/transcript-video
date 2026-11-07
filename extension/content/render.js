@@ -10,17 +10,18 @@
   const rubyHTML = (tok) => (tok.furigana || [[tok.surface, null]]).map(([b, rt]) =>
     rt ? `<ruby>${esc(b)}<rt>${esc(rt)}</rt></ruby>` : esc(b)).join("");
 
-  function speakerTag(name, speakerMap) {
+  function speakerTag(name, speakerMap, latin) {
     const sp = speakerMap[name];
-    return `<span class="spk" style="color:${esc(sp?.color || "#9aa0b4")}">（${esc(sp?.display || name)}）</span>`;
+    const label = latin ? `(${esc(sp?.display || name)}) ` : `（${esc(sp?.display || name)}）`;
+    return `<span class="spk" style="color:${esc(sp?.color || "#9aa0b4")}">${label}</span>`;
   }
 
   /** Câu gốc → các span .w (tra từ được) có furigana. idx = vị trí cue để popup tìm lại token. */
-  function cueHTML(cue, idx, speakerMap) {
+  function cueHTML(cue, idx, speakerMap, latin = false) {
     if (cue.type !== "speech" || !cue.tokens?.length) return `<span class="nonspeech">${esc(cue.text)}</span>`;
-    const prefix = cue.speaker && !cue.multiSpeaker ? speakerTag(cue.speaker, speakerMap) : "";
+    const prefix = cue.speaker && !cue.multiSpeaker ? speakerTag(cue.speaker, speakerMap, latin) : "";
     return prefix + cue.tokens.map((t, i) => {
-      if (t.pos === "speaker") return speakerTag(t.lemma, speakerMap);
+      if (t.pos === "speaker") return speakerTag(t.lemma, speakerMap, latin);
       if (t.pos === "space") return " ";
       return `<span class="w${t.isWord || t.reading ? " word" : ""}" data-c="${idx}" data-i="${i}">${rubyHTML(t)}</span>`;
     }).join("");
@@ -43,6 +44,9 @@
   .sub-box .romaji { font-size: calc(13px * var(--scale,1)); color: #ddd; font-family: system-ui, sans-serif; }
   .sub-box .hint { font-size: 12px; color: #ffb4b9; margin-top: 4px; font-family: system-ui, sans-serif; }
   .sub-box .nonspeech { color: #ccc; }
+  .latin .ja { font-family: system-ui, "Segoe UI", Roboto, sans-serif; line-height: 1.35; }
+  .sub-box.latin .ja { font-size: calc(24px * var(--scale,1)); font-weight: 600; }
+  .body.latin .cue .ja { line-height: 1.5; padding-top: 4px; }
   ruby rt { font-size: .5em; opacity: .9; font-weight: 500; }
   .nofuri rt { visibility: hidden; }
   .w { border-radius: 4px; }

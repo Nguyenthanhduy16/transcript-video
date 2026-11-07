@@ -56,14 +56,22 @@ def normalize_text(text: str) -> str:
 
 
 # ------------------------------------------------------------ chia cue từ ASR (mức từ)
-def cues_from_words(words: list[dict]) -> list[dict]:
-    """words: [{"start","end","word"}] (mốc thời gian từng từ) → cue 1–7 s, ≤ CUE_MAX_CHARS ký tự."""
+def join_text(a: str, b: str, latin: bool = True) -> str:
+    """Nối hai đoạn: tiếng Nhật nối liền; ngôn ngữ chữ Latin (latin=True) cách một dấu cách."""
+    if latin and a and b and not a[-1].isspace() and not b[0].isspace():
+        return a + " " + b
+    return a + b
+
+
+def cues_from_words(words: list[dict], max_chars: int | None = None) -> list[dict]:
+    """words: [{"start","end","word"}] (mốc thời gian từng từ) → cue 1–7 s, ≤ max_chars ký tự."""
+    mc = max_chars or CUE_MAX_CHARS
     cues: list[dict] = []
     cur: list[dict] = []
 
     def flush():
         if cur:
-            text = "".join(w["word"] for w in cur).strip()
+            text = (" " if mc > CUE_MAX_CHARS else "").join(w["word"].strip() for w in cur).strip()
             if text:
                 cues.append({"start": cur[0]["start"], "end": cur[-1]["end"], "text": text})
             cur.clear()
@@ -73,30 +81,31 @@ def cues_from_words(words: list[dict]) -> list[dict]:
             gap = w["start"] - cur[-1]["end"]
             dur = w["end"] - cur[0]["start"]
             chars = sum(len(x["word"]) for x in cur) + len(w["word"])
-            if gap >= CUE_PAUSE_SPLIT_SEC or dur > CUE_MAX_SEC or chars > CUE_MAX_CHARS:
+            if gap >= CUE_PAUSE_SPLIT_SEC or dur > CUE_MAX_SEC or chars > mc:
                 flush()
         cur.append(w)
         last = w["word"].strip()
         if last and last[-1] in SENT_END and (cur[-1]["end"] - cur[0]["start"]) >= CUE_MIN_SEC:
             flush()
     flush()
-    return merge_short(cues)
+    return merge_short(cues, mc)
 
 
-def cues_from_segments(segments: list[dict]) -> list[dict]:
+def cues_from_segments(segments: list[dict], max_chars: int | None = None) -> list[dict]:
     """Khi không có mốc từng từ: tách segment dài theo dấu câu, chia thời gian theo số ký tự."""
     out = []
     for s in segments:
-        out.extend(split_long_cue(s))
-    return merge_short(out)
+        out.extend(split_long_cue(s, max_chars))
+    return merge_short(out, max_chars)
 
 
-def split_long_cue(c: dict) -> list[dict]:
+def split_long_cue(c: dict, max_chars: int | None = None) -> list[dict]:
+    mc = max_chars or CUE_MAX_CHARS
     text = c["text"]
     dur = c["end"] - c["start"]
-    if dur <= CUE_MAX_SEC and len(text) <= CUE_MAX_CHARS * 1.5:
+    if dur <= CUE_MAX_SEC and len(text) <= mc * 1.5:
         return [c]
-    parts = [p for p in re.split(r"(?<=[。！？!?])\s*", text) if p.strip()]
+    parts = [p for p in re.split(r"(?<=[。！？!?])\s*|(?<=\.)\s+", text) if p and p.strip()]
     if len(parts) < 2:
         parts = [p for p in re.split(r"(?<=[、 ])", text) if p.strip()]
     if len(parts) < 2:
@@ -104,7 +113,7 @@ def split_long_cue(c: dict) -> list[dict]:
     # gộp các mảnh để mỗi phần gần CUE_MAX_CHARS
     chunks: list[str] = []
     for p in parts:
-        if chunks and len(chunks[-1]) + len(p) <= CUE_MAX_CHARS:
+        if chunks and len(chunks[-1]) + len(p) <= mc:
             chunks[-1] += p
         else:
             chunks.append(p)
@@ -118,7 +127,7 @@ def split_long_cue(c: dict) -> list[dict]:
     return out
 
 
-def merge_short(cues: list[dict]) -> list[dict]:
+def merge_short(cues: list[dict], max_chars: int | None = None) -> list[dict]:
     """Gộp cue < 1 s vào cue kề nếu khoảng lặng nhỏ và tổng vẫn hợp lệ."""
     out: list[dict] = []
     for c in cues:
@@ -126,11 +135,11 @@ def merge_short(cues: list[dict]) -> list[dict]:
             p = out[-1]
             short = (c["end"] - c["start"] < CUE_MIN_SEC) or (p["end"] - p["start"] < CUE_MIN_SEC)
             if (short and c["start"] - p["end"] < 0.3 and c["end"] - p["start"] <= CUE_MAX_SEC
-                    and len(p["text"]) + len(c["text"]) <= CUE_MAX_CHARS
+                    and len(p["text"]) + len(c["text"]) <= (max_chars or CUE_MAX_CHARS)
                     and p.get("speaker") == c.get("speaker")
                     and p["text"][-1:] not in SENT_END):
                 p["end"] = c["end"]
-                p["text"] = p["text"] + c["text"]
+                p["text"] = join_text(p["text"], c["text"], (max_chars or CUE_MAX_CHARS) > CUE_MAX_CHARS)
                 continue
         out.append(dict(c))
     return out
@@ -144,19 +153,19 @@ def ensure_min_duration(cues: list[dict]) -> None:
             c["end"] = round(min(c["start"] + CUE_MIN_SEC, max(limit, c["end"])), 3)
 
 
-def cues_from_asr(segments: list[dict]) -> list[dict]:
+def cues_from_asr(segments: list[dict], max_chars: int | None = None) -> list[dict]:
     """Cue từ kết quả ASR theo lượt nói (VAD): không gộp qua ranh giới lượt nói
     (tránh trộn hai người), lượt dài thì tách theo mốc từng token / dấu câu."""
     out: list[dict] = []
     for s in segments:
         if s.get("words"):
-            out.extend(cues_from_words(s["words"]))
+            out.extend(cues_from_words(s["words"], max_chars))
         else:
-            out.extend(split_long_cue({"start": s["start"], "end": s["end"], "text": s["text"]}))
-    return merge_fragments(out)
+            out.extend(split_long_cue({"start": s["start"], "end": s["end"], "text": s["text"]}, max_chars))
+    return merge_fragments(out, max_chars=max_chars)
 
 
-def merge_fragments(cues: list[dict], max_gap: float = None) -> list[dict]:
+def merge_fragments(cues: list[dict], max_gap: float = None, max_chars: int | None = None) -> list[dict]:
     """Mẩu < 1 s (vd. 'こんばんは' trước nhịp ngắt) gộp vào mẩu kề GẦN NHẤT nếu quãng nghỉ ≤ 0,35 s.
     Quãng nghỉ lớn hơn thường là ranh giới giữa hai câu/hai người nói → giữ riêng."""
     max_gap = ASR_MERGE_GAP_SEC if max_gap is None else max_gap
@@ -174,9 +183,9 @@ def merge_fragments(cues: list[dict], max_gap: float = None) -> list[dict]:
             if gap > max_gap:
                 continue
             a, b = (cues[j], c) if j < i else (c, cues[j])
-            if b["end"] - a["start"] > CUE_MAX_SEC or len(a["text"]) + len(b["text"]) > CUE_MAX_CHARS:
+            if b["end"] - a["start"] > CUE_MAX_SEC or len(a["text"]) + len(b["text"]) > (max_chars or CUE_MAX_CHARS):
                 continue
-            merged = {**a, "end": b["end"], "text": a["text"] + b["text"]}
+            merged = {**a, "end": b["end"], "text": join_text(a["text"], b["text"], (max_chars or CUE_MAX_CHARS) > CUE_MAX_CHARS)}
             k = min(i, j)
             cues[k:k + 2] = [merged]
             changed = True

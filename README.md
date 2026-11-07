@@ -18,6 +18,7 @@ akaiwa-transcript/
 │   │   ├── cues.py           chia/gộp cue 1–7 s, ≤ 32 ký tự; nhận nhạc ♪ / tiếng động （…） / nhãn người nói
 │   │   ├── diarize.py        người nói: embedding 3D-Speaker + gom cụm (CPU); pyannote tuỳ chọn
 │   │   ├── kanji.py          KANJIDIC2: On/Kun/Hán Việt; cache nghĩa tiếng Việt
+│   │   ├── english.py        tiếng Anh: tách từ, dạng gốc (simplemma), lọc từ chức năng
 │   │   ├── japanese.py       SudachiPy: tách từ, furigana (tách okurigana), romaji Hepburn, kanji
 │   │   ├── translate.py      Claude: dịch theo lô kèm ngữ cảnh + từ vựng/kanji/ngữ pháp (structured output)
 │   │   ├── build.py          ghép JSON, màu người nói, mã phiên bản "sub 6/11 · e501ce"
@@ -118,7 +119,7 @@ Job transcript nhận thêm `num_speakers` (biết trước số người nói �
 
 ### Extension Chrome
 
-Phụ đề song ngữ, tra từ, phân tích câu ngay trên YouTube và trang có video.
+Phụ đề song ngữ Nhật/Anh – Việt, tra từ, phân tích câu ngay trên YouTube và trang có video.
 Cài bằng `chrome://extensions`, bật Developer mode, rồi **Load unpacked** thư mục `extension/`.
 Hướng dẫn chi tiết: [`extension/README.md`](extension/README.md).
 Endpoint dành cho extension: `GET /api/resolve?url=` và `POST /api/jobs/subtitle` (gửi phụ đề đọc từ trang).

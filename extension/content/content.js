@@ -72,7 +72,9 @@
   }
 
   function renderToggles() {
-    const chips = [["subOn", "Phụ đề"], ["jaOn", "Nhật"], ["viOn", "Việt"], ["furigana", "Furigana"], ["romaji", "Romaji"]];
+    const isJa = !doc || doc.lang === "ja";
+    const chips = [["subOn", "Phụ đề"], ["jaOn", isJa ? "Nhật" : (doc.lang === "en" ? "Anh" : "Gốc")], ["viOn", "Việt"],
+                   ...(isJa ? [["furigana", "Furigana"], ["romaji", "Romaji"]] : [])];
     $("toggles").innerHTML = chips.map(([k, l]) => `<button class="chip ${S[k] ? "on" : ""}" data-k="${k}">${l}</button>`).join("") +
       `<button class="chip ${S.autoPause === "each" ? "on" : ""}" data-k="autoPause" title="Tự dừng cuối mỗi câu">Dừng mỗi câu</button>
        <button class="chip" data-k="fontDown" title="Chữ nhỏ hơn">A−</button><button class="chip" data-k="fontUp" title="Chữ lớn hơn">A+</button>`;
@@ -121,7 +123,7 @@
   const onSeek = () => { pausedFor = null; };
 
   function reset() {
-    doc = null; cues = []; speakerMap = {}; job = null; ytInfo = null;
+    doc = null; cues = []; speakerMap = {}; job = null; ytInfo = null; langChoice = "auto";
     activeIdx = showIdx = -1; pausedFor = null; hint = "";
     setStatus(pageKey ? "checking" : "no-video");
   }
@@ -134,6 +136,10 @@
     $("toggles").classList.toggle("hidden", s !== "ready");
     $("sub2").textContent = s === "ready" ? (doc.credit || "") : "";
     $("title").firstChild.textContent = s === "ready" ? doc.title : "Transcript học ngoại ngữ";
+    const latin = s === "ready" && doc.lang !== "ja";
+    $("subBox").classList.toggle("latin", latin);
+    $("body").classList.toggle("latin", latin);
+    renderToggles();
     renderBody();
     renderSub();
   }
@@ -175,10 +181,27 @@
     setTimeout(() => window.removeEventListener("message", onMsg), 5000);
   }
 
-  function jaTrack() {
-    const t = (ytInfo?.tracks || []).filter((x) => /^ja/.test(x.lang));
+  // ---- ngôn ngữ video: ja | en
+  const LANG_NAME = { ja: "Tiếng Nhật", en: "Tiếng Anh" };
+  let langChoice = "auto";            // lựa chọn trong bảng (auto = theo video)
+  /** Ngôn ngữ nói trong video theo phụ đề tự động (asr) của YouTube. */
+  function spokenTrack() { return IS_YT ? (ytInfo?.tracks || []).find((x) => x.kind === "asr") || null : null; }
+  function videoLang() {
+    if (langChoice !== "auto") return langChoice;
+    const sp = spokenTrack();
+    if (sp && /^en/.test(sp.lang)) return "en";
+    if (sp && /^ja/.test(sp.lang)) return "ja";
+    if (IS_YT && !sp) {                 // không có asr: lấy theo phụ đề làm tay có sẵn
+      const tr = ytInfo?.tracks || [];
+      if (tr.some((x) => /^en/.test(x.lang)) && !tr.some((x) => /^ja/.test(x.lang))) return "en";
+    }
+    return S.lang && S.lang !== "auto" ? S.lang : "ja";
+  }
+  function trackFor(lang) {
+    const t = (ytInfo?.tracks || []).filter((x) => x.lang.split("-")[0] === lang);
     return t.find((x) => x.kind !== "asr") || t[0] || null;
   }
+  const jaTrack = () => trackFor(videoLang());
 
   // ---- phụ đề YouTube → WebVTT (YouTube trả json3, srv3/XML hoặc VTT tuỳ yêu cầu)
   function vttTime(ms) {
@@ -254,7 +277,7 @@
       return setStatus("missing", "Không lấy được phụ đề từ YouTube. Thử bật phụ đề tiếng Nhật (nút CC) trên video vài giây rồi bấm lại, hoặc dùng “Nhận dạng giọng nói trên server”.");
     }
     const r = await api("/api/jobs/subtitle", "POST", {
-      url: pageKey, subtitle: vtt, format: "vtt", subtitle_kind: t.kind === "asr" ? "youtube_auto" : "youtube_manual",
+      url: pageKey, subtitle: vtt, format: "vtt", subtitle_kind: t.kind === "asr" ? "youtube_auto" : "youtube_manual", lang: videoLang(),
       title: ytInfo?.title || document.title.replace(/ - YouTube$/, ""), duration: ytInfo?.duration || video?.duration || null,
     });
     startJob(r);
@@ -264,7 +287,7 @@
     const n = Number(shadow.getElementById("nspk")?.value) || null;
     setStatus("creating", "Đang gửi yêu cầu…");
     const title = IS_YT ? (ytInfo?.title || document.title.replace(/ - YouTube$/, "")) : document.title;
-    const r = await api("/api/jobs", "POST", { url: pageKey, title, lang: "ja", target: "vi", num_speakers: n });
+    const r = await api("/api/jobs", "POST", { url: pageKey, title, lang: videoLang(), target: "vi", num_speakers: n });
     startJob(r);
   }
 
@@ -321,14 +344,21 @@
       return;
     }
     // missing
-    const t = IS_YT ? jaTrack() : null;
-    // phụ đề tự động (asr) của YouTube có ngôn ngữ = ngôn ngữ nói trong video
-    const spoken = IS_YT ? (ytInfo?.tracks || []).find((x) => x.kind === "asr" && !/^ja/.test(x.lang)) : null;
+    const lang = videoLang();
+    const t = IS_YT ? trackFor(lang) : null;
+    const sp = spokenTrack();
+    const spLang = sp ? sp.lang.split("-")[0] : null;
+    let warn = "";
+    if (sp && !["ja", "en"].includes(spLang)) warn = `Video này có vẻ nói ${esc(sp.name.replace(/\s*\(.*\)$/, ""))}. Tool hiện hỗ trợ video tiếng Nhật và tiếng Anh.`;
+    else if (sp && spLang !== lang) warn = `Video có vẻ nói ${LANG_NAME[spLang]}, nhưng đang chọn ${LANG_NAME[lang]}: phụ đề ${LANG_NAME[lang]} (nếu có) có thể chỉ là bản dịch tự động.`;
     body.innerHTML = `<div class="empty"><b>Video này chưa có transcript</b>
       <p class="muted">Tạo một lần, lần sau mở lại sẽ có ngay.</p>
-      ${spoken ? `<p class="err" style="margin-top:0">Video này có vẻ nói ${esc(spoken.name.replace(/\s*\(.*\)$/, ""))}. Tool hiện chỉ hỗ trợ video tiếng Nhật; phụ đề tiếng Nhật (nếu có) có thể chỉ là bản dịch tự động.</p>` : ""}
+      <div style="font-size:12px;margin:-4px 0 8px" class="muted">Ngôn ngữ video:
+        <select id="lang">${[["auto", `Tự nhận (${LANG_NAME[lang]})`], ["ja", "Tiếng Nhật"], ["en", "Tiếng Anh"]].map(([v, l]) =>
+          `<option value="${v}" ${langChoice === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+      ${warn ? `<p class="err" style="margin-top:0">${warn}</p>` : ""}
       ${IS_YT ? (t ? `<button class="btn primary" data-act="subs">Tạo từ phụ đề YouTube<br><span style="font-weight:500;font-size:12px">${esc(t.name)}${t.kind === "asr" ? " (tự động)" : ""}</span></button>`
-                   : `<p class="muted" style="font-size:12px">${ytInfo ? "Video không có phụ đề tiếng Nhật." : "Đang đọc danh sách phụ đề…"}</p>`) : ""}
+                   : `<p class="muted" style="font-size:12px">${ytInfo ? `Video không có phụ đề ${LANG_NAME[lang]}.` : "Đang đọc danh sách phụ đề…"}</p>`) : ""}
       <button class="btn ${IS_YT && t ? "" : "primary"}" data-act="asr">Nhận dạng giọng nói trên server</button>
       <div style="font-size:12px;margin-top:6px" class="muted">Số người nói (nếu biết):
         <select id="nspk"><option value="">tự đoán</option>${[1, 2, 3, 4, 5, 6].map((n) => `<option>${n}</option>`).join("")}</select></div>
@@ -340,7 +370,7 @@
     const color = c.type === "speech" ? (speakerMap[c.speaker]?.color || "#9aa0b4") : "#c3c3cc";
     return `<div class="cue${i === activeIdx ? " on" : ""}" data-idx="${i}">
       <button class="play" style="background:${esc(color)}" data-seek="${i}" title="Phát từ ${fmtTime(c.start)}">▶</button>
-      <div>${S.jaOn ? `<div class="ja">${cueHTML(c, i, speakerMap)}</div>` : ""}
+      <div>${S.jaOn ? `<div class="ja">${cueHTML(c, i, speakerMap, doc?.lang !== "ja")}</div>` : ""}
         ${S.romaji && c.romaji ? `<div class="romaji">${esc(c.romaji)}</div>` : ""}
         ${S.viOn && c.translation ? `<div class="tr">${esc(c.translation)}</div>` : ""}</div></div>`;
   }
@@ -357,12 +387,12 @@
     const body = $("body");
     if (!c) { body.innerHTML = `<div class="empty">Phát video hoặc bấm ▶ ở một câu để xem phân tích.</div>`; return; }
     let h = `<div class="now"><div class="meta">${fmtTime(c.start)} – ${fmtTime(c.end)} · #${c.id}/${cues.length}</div>
-      <div class="ja">${cueHTML(c, activeIdx, speakerMap)}</div>${c.translation ? `<div class="muted">${esc(c.translation)}</div>` : ""}</div>`;
+      <div class="ja">${cueHTML(c, activeIdx, speakerMap, doc?.lang !== "ja")}</div>${c.translation ? `<div class="muted">${esc(c.translation)}</div>` : ""}</div>`;
     if (c.type !== "speech") { body.innerHTML = h + `<div class="empty">Cue này không có từ.</div>`; return; }
     const v = c.vocab || [], k = c.kanji || [], g = c.grammar || [];
     h += `<div class="sec">Từ vựng (${v.length})</div>` + (v.map((x) => `<div class="item"><span class="big">${esc(x.lemma)}</span><span class="rd">${esc(x.reading)}</span>${x.jlpt ? `<span class="jlpt">${esc(x.jlpt)}</span>` : ""}
         <div>${x.meaning ? esc(x.meaning) : '<span class="muted">chưa có nghĩa</span>'}</div></div>`).join("") || `<div class="muted" style="padding:0 6px">—</div>`);
-    h += `<div class="sec">Kanji (${k.length})</div>` + (k.map((x) => `<div class="item"><span class="big">${esc(x.char)}</span> <b>${esc(x.hanViet || "")}</b> · ${esc(x.meaning || "")}
+    if (doc.lang === "ja") h += `<div class="sec">Kanji (${k.length})</div>` + (k.map((x) => `<div class="item"><span class="big">${esc(x.char)}</span> <b>${esc(x.hanViet || "")}</b> · ${esc(x.meaning || "")}
         <div class="muted" style="font-size:12px">On: ${esc((x.on || []).join("、") || "–")} · Kun: ${esc((x.kun || []).join("、") || "–")}</div></div>`).join("") || `<div class="muted" style="padding:0 6px">—</div>`);
     h += `<div class="sec">Ngữ pháp (${g.length})</div>` + (g.map((x) => `<div class="item"><b>${esc(x.pattern)}</b>${x.jlpt ? `<span class="jlpt">${esc(x.jlpt)}</span>` : ""}
         <div>${esc(x.meaning)}</div><div class="muted" style="font-size:12px">${esc(x.explanation || "")}</div></div>`).join("") || `<div class="muted" style="padding:0 6px">—</div>`);
@@ -388,7 +418,7 @@
     let html = "";
     if (on && showIdx >= 0) {
       const c = cues[showIdx];
-      if (S.jaOn) html += `<div class="ja">${cueHTML(c, showIdx, speakerMap)}</div>`;
+      if (S.jaOn) html += `<div class="ja">${cueHTML(c, showIdx, speakerMap, doc?.lang !== "ja")}</div>`;
       if (S.romaji && c.romaji) html += `<div class="romaji">${esc(c.romaji)}</div>`;
       if (S.viOn && c.translation) html += `<div class="vi">${esc(c.translation)}</div>`;
     }
@@ -537,6 +567,10 @@
     else if (act === "retry") check();
     if (el.closest("#close")) { S.panelOn = false; saveSettings(); }
     if (el.closest("#fab")) { S.panelOn = !S.panelOn; saveSettings(); }
+  });
+
+  shadow.addEventListener("change", (e) => {
+    if (e.target.id === "lang") { langChoice = e.target.value; renderBody(); }
   });
 
   // kéo bảng transcript bằng thanh tiêu đề

@@ -48,4 +48,10 @@ HF_TOKEN = os.getenv("HF_TOKEN", "")
 CUE_MIN_SEC = 1.0
 CUE_MAX_SEC = 7.0
 CUE_MAX_CHARS = 32          # ~2 dòng × 16 ký tự tiếng Nhật
+CUE_MAX_CHARS_LATIN = 84    # ~2 dòng × 42 ký tự (tiếng Anh…)
+SUPPORTED_LANGS = ("ja", "en")
+
+
+def max_chars_for(lang: str) -> int:
+    return CUE_MAX_CHARS if lang in ("ja", "zh", "ko") else CUE_MAX_CHARS_LATIN
 CUE_PAUSE_SPLIT_SEC = 0.6

@@ -5,7 +5,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 
-from . import japanese, kanji as kanjidic
+from . import english, japanese, kanji as kanjidic
 from .cues import classify, split_speaker
 
 SPEAKER_COLORS = ["#F4A261", "#E76F51", "#2A9D8F", "#8AB17D", "#E9C46A", "#9B5DE5",
@@ -49,6 +49,12 @@ def enrich_cue(c: dict, lang: str) -> None:
         c["romaji"] = japanese.romaji_line(toks)
         c["_cand"] = japanese.vocab_candidates(toks)
         c["_kanji"] = japanese.extract_kanji(c["text"])
+    elif lang == "en":
+        toks = english.tokenize(c["text"])
+        c["tokens"] = toks
+        c["romaji"] = ""
+        c["_cand"] = english.vocab_candidates(toks)
+        c["_kanji"] = []
     else:
         c["tokens"] = [{"surface": w, "reading": "", "lemma": w, "pos": "", "furigana": [[w, None]],
                         "romaji": "", "isWord": True} for w in c["text"].split()]

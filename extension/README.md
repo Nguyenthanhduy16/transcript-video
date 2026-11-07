@@ -1,6 +1,6 @@
 # Extension Chrome: Transcript học ngoại ngữ
 
-Phụ đề song ngữ Nhật – Việt có furigana, tra từ, phân tích câu, ngay trên YouTube và các trang có video.
+Phụ đề song ngữ **Nhật – Việt** (có furigana) và **Anh – Việt**, tra từ, phân tích câu, ngay trên YouTube và các trang có video.
 Extension dùng chung server (backend) của tool transcript: server tạo transcript, extension hiển thị.
 
 ## Cài đặt
@@ -15,6 +15,17 @@ Extension dùng chung server (backend) của tool transcript: server tạo trans
 
 Server không chạy ở `http://localhost:8000` thì mở popup của extension, sửa địa chỉ trong mục **Server** và bấm **Lưu**.
 Với server khác localhost, Chrome sẽ hỏi quyền truy cập địa chỉ đó.
+
+## Ngôn ngữ video
+
+| | Tiếng Nhật | Tiếng Anh |
+|---|---|---|
+| Nhận dạng giọng nói trên server | ReazonSpeech (nhanh, ~0,1 × thời lượng video) | Whisper small (~0,5 × thời lượng video, cần `scripts/download_models.sh --whisper`) |
+| Tách từ | SudachiPy, furigana, romaji, kanji (âm Hán Việt) | dạng gốc của từ (went → go), bỏ qua từ chức năng |
+| Cấp độ từ vựng (khi có API key) | JLPT N5–N1 | CEFR A1–C2 |
+
+Ô **Ngôn ngữ video** trong bảng mặc định là **Tự nhận**: trên YouTube, extension đọc ngôn ngữ của phụ đề tự động
+(chính là ngôn ngữ nói trong video). Trang khác: mặc định tiếng Nhật, có thể đổi sang tiếng Anh trước khi tạo.
 
 ## Sử dụng
 

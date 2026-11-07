@@ -44,7 +44,7 @@ _lock = threading.Lock()
 
 
 def resolve_engine(lang: str) -> str:
-    if ASR_ENGINE != "auto":
+    if ASR_ENGINE != "auto" and not (ASR_ENGINE == "reazon" and lang != "ja"):
         return ASR_ENGINE
     if lang == "ja" and (REAZON_DIR / "tokens.txt").exists() and VAD_MODEL.exists():
         return "reazon"
@@ -69,6 +69,8 @@ def transcribe(wav_path: str, lang: str, progress: Callable[[float], None] | Non
             raise ASRUnavailable("ReazonSpeech chỉ hỗ trợ tiếng Nhật – đặt ASR_ENGINE=whisper-onnx")
         return _sherpa(wav_path, "reazon", lang, progress)
     if eng == "whisper-onnx":
+        if not (WHISPER_ONNX_DIR / "small-tokens.txt").exists():
+            raise ASRUnavailable(f"Video {lang} cần model Whisper: chạy scripts/download_models.sh --whisper")
         return _sherpa(wav_path, "whisper-onnx", lang, progress)
     if eng == "whisperx":
         return _whisperx(wav_path, lang)
@@ -127,11 +129,12 @@ def denoise(audio: np.ndarray) -> np.ndarray:
     return np.array(r.samples, dtype=np.float32)
 
 
-def _recognizer(kind: str):
+def _recognizer(kind: str, lang: str = "ja"):
     import sherpa_onnx
     with _lock:
-        if kind in _cache:
-            return _cache[kind]
+        key = kind if kind == "reazon" else f"{kind}:{lang}"
+        if key in _cache:
+            return _cache[key]
         if kind == "reazon":
             d = REAZON_DIR
             if not (d / "tokens.txt").exists():
@@ -147,8 +150,8 @@ def _recognizer(kind: str):
                 raise ASRUnavailable("Chưa có model Whisper – chạy scripts/download_models.sh --whisper")
             rec = sherpa_onnx.OfflineRecognizer.from_whisper(
                 encoder=str(d / "small-encoder.int8.onnx"), decoder=str(d / "small-decoder.int8.onnx"),
-                tokens=str(d / "small-tokens.txt"), language="ja", task="transcribe", num_threads=ASR_THREADS)
-        _cache[kind] = rec
+                tokens=str(d / "small-tokens.txt"), language=lang, task="transcribe", num_threads=ASR_THREADS)
+        _cache[key] = rec
         return rec
 
 
@@ -178,7 +181,7 @@ def _sherpa(wav_path: str, kind: str, lang: str, progress) -> dict:
             audio = clean
     elif segs is None:
         segs = vad_segments(audio)
-    rec = _recognizer(kind)
+    rec = _recognizer(kind, lang)
     pad = np.zeros(int(PAD_SEC * SR), dtype=np.float32)
     out = []
     pending_onset, last_empty_end = None, -1.0

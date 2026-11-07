@@ -224,3 +224,21 @@ def test_extension_endpoints(tmp_path):
     assert not c.get("/api/resolve", params={"url": "https://example.com/khac.mp4"}).json()["exists"]
     assert c.post("/api/jobs/subtitle", json={"url": "ftp://x", "subtitle": vtt}).status_code == 400
     c.delete("/api/videos/extTest0001")
+
+
+def test_english_tokens_and_cues():
+    from app.pipeline import english as en
+    from app.pipeline.cues import cues_from_asr, split_long_cue
+    from app.config import max_chars_for
+    t = en.tokenize("That's impressive. We're getting better at learning languages!")
+    assert "".join(x["surface"] for x in t) == "That's impressive. We're getting better at learning languages!"
+    assert [v["lemma"] for v in en.vocab_candidates(t)] == ["impressive", "good", "learn", "language"]
+    assert max_chars_for("en") > max_chars_for("ja")
+    # tiếng Anh nối từ có dấu cách, tiếng Nhật nối liền
+    segs = [{"start": 0.0, "end": 0.5, "text": "Hello", "words": []}, {"start": 0.6, "end": 2.0, "text": "world again", "words": []}]
+    assert cues_from_asr(segs, max_chars_for("en"))[0]["text"] == "Hello world again"
+    ja = [{"start": 0.0, "end": 0.5, "text": "こんばんは", "words": []}, {"start": 0.6, "end": 2.0, "text": "七時です", "words": []}]
+    assert cues_from_asr(ja, max_chars_for("ja"))[0]["text"] == "こんばんは七時です"
+    long = {"start": 0, "end": 12, "text": "This is the first sentence of a long talk. And this is the second one, which goes on for a while."}
+    parts = split_long_cue(long, max_chars_for("en"))
+    assert len(parts) == 2 and parts[1]["text"].startswith("And")

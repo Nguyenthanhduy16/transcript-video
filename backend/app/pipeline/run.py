@@ -9,6 +9,7 @@ from pathlib import Path
 from . import asr, diarize, source
 from .build import enrich_cue, finalize, normalize_cues, now_iso
 from .cues import cues_from_asr, split_long_cue
+from ..config import max_chars_for
 from .subtitles import parse_subtitle_file
 from .translate import LLMUnavailable, Translator
 from .. import storage
@@ -111,13 +112,13 @@ def run_pipeline(params: dict, report) -> dict:
         stats["asrSec"] = round(time.time() - t0, 2)
         stats["asrEngine"] = res.get("engine")
         step("segment", 0, "Đang chia câu")
-        raw_cues = cues_from_asr(res["segments"])
+        raw_cues = cues_from_asr(res["segments"], max_chars_for(lang))
         sub_kind = "asr"
     else:
         step("segment", 0, f"Đã có phụ đề gốc ({len(raw_cues)} dòng) – bỏ qua ASR")
         split = []
         for c in raw_cues:
-            split.extend(split_long_cue(c))
+            split.extend(split_long_cue(c, max_chars_for(lang)))
         raw_cues = split
 
     cues = normalize_cues(raw_cues, lang)

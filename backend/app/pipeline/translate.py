@@ -33,14 +33,14 @@ LANG_NAMES = {"ja": "tiếng Nhật", "ko": "tiếng Hàn", "zh": "tiếng Trung
 class VocabOut(BaseModel):
     lemma: str = Field(description="Dạng từ điển, đúng như trong danh sách tu_vung")
     meaning: str = Field(description="Nghĩa tiếng Việt ngắn gọn (≤ 8 từ), đúng ngữ cảnh câu")
-    jlpt: str = Field(description="N5, N4, N3, N2, N1 hoặc chuỗi rỗng")
+    jlpt: str = Field(description="Cấp độ: tiếng Nhật JLPT N5–N1; tiếng Anh CEFR A1–C2; không rõ thì chuỗi rỗng")
 
 
 class GrammarOut(BaseModel):
     pattern: str = Field(description="Mẫu ngữ pháp, vd. '〜たらあかん'")
     meaning: str = Field(description="Ý nghĩa ngắn")
     explanation: str = Field(description="1 câu tiếng Việt, nêu sắc thái (khẩu ngữ, phương ngữ…)")
-    jlpt: str = Field(description="N5–N1 hoặc rỗng")
+    jlpt: str = Field(description="JLPT N5–N1 (tiếng Nhật) / CEFR A1–C2 (tiếng Anh) hoặc rỗng")
 
 
 class CueOut(BaseModel):
@@ -114,7 +114,8 @@ Dịch:
 Phân tích:
 - vocab: đúng các từ trong "tu_vung" của câu (giữ nguyên lemma), nghĩa hợp ngữ cảnh, bỏ qua tên người.
 - grammar: 0–2 mẫu ngữ pháp/cấu trúc đáng học nhất (kể cả khẩu ngữ, phương ngữ); câu quá đơn giản thì để trống.
-- Trả về đủ mọi id trong "can_xu_ly", đúng thứ tự."""
+- Trả về đủ mọi id trong "can_xu_ly", đúng thứ tự.
+- Video tiếng Anh: "jlpt" ghi cấp CEFR (A1–C2); nghĩa từ vựng theo ngữ cảnh (phrasal verb, thành ngữ thì giải thích cả cụm trong grammar)."""
 
 KANJI_PROMPT = """Cho danh sách chữ Hán (kèm âm Hán Việt và nghĩa tiếng Anh từ KANJIDIC2).
 Trả về nghĩa tiếng Việt ngắn gọn (2–5 từ) thường gặp nhất của từng chữ, theo cách người Việt học tiếng Nhật hiểu."""
