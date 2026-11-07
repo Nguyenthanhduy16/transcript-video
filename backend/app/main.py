@@ -24,6 +24,10 @@ from .pipeline.translate import LLMUnavailable, Translator
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 app = FastAPI(title="Video Transcript học ngoại ngữ")
+# Extension Chrome (và web app chạy ở cổng khác) gọi API trực tiếp
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+app.add_middleware(CORSMiddleware, allow_origin_regex=r"^(chrome-extension://.*|http://(localhost|127\.0\.0\.1)(:\d+)?)$",
+                   allow_methods=["*"], allow_headers=["*"])
 jobs = get_queue()
 
 
@@ -79,6 +83,65 @@ async def create_upload_job(
             shutil.copyfileobj(subtitle.file, f)
         params["subtitle_path"] = str(spath)
     return jobs.submit("transcript", params, label=title or video.filename)
+
+
+def _video_id_for(url: str) -> str:
+    yt = source.youtube_id(url)
+    return yt or source.make_video_id(url)
+
+
+@app.get("/api/resolve")
+def resolve(url: str):
+    """Extension hỏi: video ở link này đã có transcript chưa? Trả về videoId tương ứng.
+    Khớp theo: id YouTube / mã băm của link / link nguồn hoặc file phát đã lưu trong transcript."""
+    from urllib.parse import urlparse
+    vid = _video_id_for(url)
+    doc = None
+    try:
+        doc = storage.load_transcript(vid)
+    except ValueError:
+        pass
+    if not doc:
+        path = urlparse(url).path
+        for v in storage.list_transcripts():
+            pl = v.get("player") or {}
+            if pl.get("src") and (pl["src"] == url or (pl["src"].startswith("/") and path == pl["src"])):
+                vid, doc = v["videoId"], v
+                break
+    kind = "youtube" if source.youtube_id(url) else "media"
+    return {"videoId": vid, "exists": bool(doc), "kind": kind,
+            "title": doc.get("title") if doc else None, "cueCount": (doc or {}).get("cueCount") or len((doc or {}).get("cues", []))}
+
+
+class SubtitleJobIn(BaseModel):
+    url: str                    # link trang video (YouTube…)
+    subtitle: str               # nội dung WebVTT/SRT đọc từ trang
+    format: str = "vtt"
+    subtitle_kind: str = "youtube_manual"   # youtube_manual | youtube_auto | page
+    title: str | None = None
+    duration: float | None = None
+    lang: str = "ja"
+    target: str = "vi"
+    glossary: str = ""
+
+
+@app.post("/api/jobs/subtitle")
+def create_subtitle_job(body: SubtitleJobIn):
+    """Extension gửi phụ đề gốc đọc được trên trang → tách từ, furigana, dịch; không tải video."""
+    if not body.url.startswith(("http://", "https://")):
+        raise HTTPException(400, "Link phải bắt đầu bằng http:// hoặc https://")
+    if body.format not in ("vtt", "srt"):
+        raise HTTPException(400, "format: vtt | srt")
+    if not body.subtitle.strip() or len(body.subtitle) > 5_000_000:
+        raise HTTPException(400, "Phụ đề trống hoặc quá lớn")
+    vid = _video_id_for(body.url)
+    mdir = source.media_dir(vid)
+    sp = mdir / f"page_subtitle.{body.format}"
+    sp.write_text(body.subtitle, encoding="utf-8")
+    params = {"url": body.url, "video_id": vid, "subtitle_path": str(sp), "subtitle_kind": body.subtitle_kind,
+              "title": body.title, "duration": body.duration, "lang": body.lang, "target": body.target,
+              "glossary": body.glossary}
+    return jobs.submit("transcript", params, label=body.title or body.url)
 
 
 @app.get("/api/jobs")

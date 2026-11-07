@@ -69,6 +69,10 @@ def run_pipeline(params: dict, report) -> dict:
                 media_src = source.download_media(url, mdir)
             duration = source.probe_media(media_src, require_audio=not params.get("subtitle_path"))["duration"]
             title = title or Path(url.split("?")[0]).stem
+        elif kind == "youtube" and params.get("subtitle_path"):
+            # phụ đề do extension đọc sẵn từ trang YouTube → không cần gọi YouTube từ server
+            player = {"type": "youtube", "youtubeId": yt}
+            duration = params.get("duration")
         else:
             info = source.fetch_info(url)
             title = title or info.get("title")
@@ -90,7 +94,7 @@ def run_pipeline(params: dict, report) -> dict:
 
     if params.get("subtitle_path") and not params.get("force_asr"):
         raw_cues = parse_subtitle_file(params["subtitle_path"])
-        sub_kind = "upload"
+        sub_kind = params.get("subtitle_kind") or "upload"
 
     # ---------------------------------------------------------------- 2. ASR (nếu không có phụ đề)
     if raw_cues is None:

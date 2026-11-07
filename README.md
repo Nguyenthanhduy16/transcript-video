@@ -23,6 +23,7 @@ akaiwa-transcript/
 │   │   ├── build.py          ghép JSON, màu người nói, mã phiên bản "sub 6/11 · e501ce"
 │   │   └── run.py            điều phối các bước
 │   └── tests/                pytest (33 test, không cần mạng/GPU)
+├── extension/                Extension Chrome (Manifest V3): phụ đề song ngữ trên YouTube / trang có video
 ├── frontend/                 HTML + JS thuần (ES modules), không cần build
 │   ├── index.html            dán link / upload, tiến trình job, thư viện
 │   ├── watch.html            trang xem 2 cột (video + phụ đề | Hội thoại / Phân tích / Tập)
@@ -114,6 +115,13 @@ Job lỗi tạm thời (mạng, timeout) được thử lại 2 lần. Lỗi vĩ
 | `MAX_DURATION_MIN`, `MAX_DOWNLOAD_MB` | `180`, `2048` | Giới hạn video |
 
 Job transcript nhận thêm `num_speakers` (biết trước số người nói → gán chính xác hơn).
+
+### Extension Chrome
+
+Phụ đề song ngữ, tra từ, phân tích câu ngay trên YouTube và trang có video.
+Cài bằng `chrome://extensions`, bật Developer mode, rồi **Load unpacked** thư mục `extension/`.
+Hướng dẫn chi tiết: [`extension/README.md`](extension/README.md).
+Endpoint dành cho extension: `GET /api/resolve?url=` và `POST /api/jobs/subtitle` (gửi phụ đề đọc từ trang).
 
 ### Benchmark và nghiệm thu
 

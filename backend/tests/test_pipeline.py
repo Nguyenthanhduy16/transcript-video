@@ -195,3 +195,31 @@ def test_kanjidic_lookup():
     from app.pipeline import kanji
     k = kanji.lookup("漢")
     assert k["hanViet"].startswith("HÁN") and "カン" in k["on"] and k["strokes"] == 13
+
+
+def test_extension_endpoints(tmp_path):
+    """/api/jobs/subtitle (phụ đề YouTube do extension gửi) + /api/resolve."""
+    import time
+    from fastapi.testclient import TestClient
+    from app.main import app
+    import app.pipeline.translate as t
+    t.LLM_PROVIDER = "none"
+    c = TestClient(app)
+    vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\n（ハル）宿題、忘れたらあかんで。\n\n00:00:04.000 --> 00:00:05.500\n♪～\n"
+    r = c.post("/api/jobs/subtitle", json={"url": "https://www.youtube.com/watch?v=extTest0001", "subtitle": vtt, "title": "Thử"})
+    assert r.status_code == 200, r.text
+    jid = r.json()["id"]
+    for _ in range(50):
+        j = c.get(f"/api/jobs/{jid}").json()
+        if j["status"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert j["status"] == "done", j
+    doc = c.get("/api/videos/extTest0001").json()
+    assert doc["player"] == {"type": "youtube", "youtubeId": "extTest0001"}
+    assert doc["cues"][0]["speaker"] == "ハル" and doc["cues"][1]["type"] == "music"
+    res = c.get("/api/resolve", params={"url": "https://youtu.be/extTest0001"}).json()
+    assert res["exists"] and res["videoId"] == "extTest0001"
+    assert not c.get("/api/resolve", params={"url": "https://example.com/khac.mp4"}).json()["exists"]
+    assert c.post("/api/jobs/subtitle", json={"url": "ftp://x", "subtitle": vtt}).status_code == 400
+    c.delete("/api/videos/extTest0001")

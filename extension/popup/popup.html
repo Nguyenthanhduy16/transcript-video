@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Transcript học ngoại ngữ</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header><span class="logo">字</span><b>Transcript học ngoại ngữ</b></header>
+
+  <section id="tabStatus" class="card">
+    <div id="tabText" class="muted">Đang kiểm tra tab hiện tại…</div>
+    <button id="enableBtn" class="btn primary hidden">Bật trên trang này</button>
+  </section>
+
+  <section class="card">
+    <h2>Hiển thị</h2>
+    <label class="row"><span>Phụ đề trên video</span><input type="checkbox" data-k="subOn"></label>
+    <label class="row"><span>Bảng transcript</span><input type="checkbox" data-k="panelOn"></label>
+    <label class="row"><span>Câu tiếng Nhật</span><input type="checkbox" data-k="jaOn"></label>
+    <label class="row"><span>Bản dịch tiếng Việt</span><input type="checkbox" data-k="viOn"></label>
+    <label class="row"><span>Furigana</span><input type="checkbox" data-k="furigana"></label>
+    <label class="row"><span>Romaji</span><input type="checkbox" data-k="romaji"></label>
+    <label class="row"><span>Rê chuột để tra từ</span><input type="checkbox" data-k="hoverLookup"></label>
+    <label class="row"><span>Tự dừng cuối mỗi câu</span><input type="checkbox" id="autoPause"></label>
+    <label class="row"><span>Cỡ chữ phụ đề</span><span><input type="range" min="60" max="200" step="10" data-k="fontScale"> <output id="fontOut"></output></span></label>
+    <label class="row"><span>Vị trí phụ đề</span><span><input type="range" min="2" max="40" step="1" data-k="subBottom"> <output id="botOut"></output></span></label>
+    <label class="row"><span>Chỉnh lệch phụ đề (giây)</span><input type="number" step="0.1" data-k="offset" style="width:70px"></label>
+  </section>
+
+  <section class="card">
+    <h2>Sổ từ <span id="wordCount" class="muted"></span></h2>
+    <ul id="words"></ul>
+    <div class="actions"><button id="exportBtn" class="btn">Xuất CSV (Anki)</button><button id="clearBtn" class="btn">Xoá hết</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Server</h2>
+    <div class="row"><input id="server" type="url" placeholder="http://localhost:8000"><button id="saveServer" class="btn">Lưu</button></div>
+    <div id="health" class="muted small"></div>
+    <a id="openWeb" href="#" target="_blank" class="small">Mở web app ↗</a>
+  </section>
+
+  <p class="muted small">Phím tắt trên trang: <kbd>[</kbd> câu trước · <kbd>]</kbd> câu sau · <kbd>\</kbd> nghe lại câu.</p>
+  <script src="popup.js"></script>
+</body>
+</html>
