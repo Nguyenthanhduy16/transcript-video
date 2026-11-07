@@ -180,18 +180,78 @@
     return t.find((x) => x.kind !== "asr") || t[0] || null;
   }
 
+  // ---- phụ đề YouTube → WebVTT (YouTube trả json3, srv3/XML hoặc VTT tuỳ yêu cầu)
+  function vttTime(ms) {
+    const t = Math.max(0, Math.round(ms));
+    const h = Math.floor(t / 3600000), m = Math.floor(t / 60000) % 60, s = Math.floor(t / 1000) % 60, x = t % 1000;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(x).padStart(3, "0")}`;
+  }
+  function decodeEntities(s) { const ta = document.createElement("textarea"); ta.innerHTML = s; return ta.value; }
+  function toVtt(body) {
+    if (!body) return "";
+    const txt = body.trim();
+    if (txt.startsWith("WEBVTT")) return txt;
+    let items = [];
+    if (txt.startsWith("{")) {                       // json3
+      try {
+        const j = JSON.parse(txt);
+        for (const e of j.events || []) {
+          if (!e.segs || e.aAppend) continue;
+          const text = e.segs.map((g) => g.utf8 || "").join("").replace(/\n+/g, " ").trim();
+          if (text) items.push({ s: e.tStartMs || 0, e: (e.tStartMs || 0) + (e.dDurationMs || 2000), text });
+        }
+      } catch { return ""; }
+    } else if (txt.startsWith("<")) {                // srv3 (<p t d>) hoặc srv1 (<text start dur>)
+      const doc = new DOMParser().parseFromString(txt, "text/xml");
+      for (const n of doc.querySelectorAll("p")) {
+        const text = decodeEntities(n.textContent || "").replace(/\s+/g, " ").trim();
+        if (text) items.push({ s: +n.getAttribute("t") || 0, e: (+n.getAttribute("t") || 0) + (+n.getAttribute("d") || 2000), text });
+      }
+      if (!items.length) for (const n of doc.querySelectorAll("text")) {
+        const st = parseFloat(n.getAttribute("start") || "0") * 1000, du = parseFloat(n.getAttribute("dur") || "2") * 1000;
+        const text = decodeEntities(n.textContent || "").replace(/\s+/g, " ").trim();
+        if (text) items.push({ s: st, e: st + du, text });
+      }
+    }
+    items.sort((x, y) => x.s - y.s);
+    // phụ đề tự động "cuộn" chồng thời gian → cắt end tại start của dòng sau
+    for (let i = 0; i < items.length - 1; i++) if (items[i].e > items[i + 1].s) items[i].e = Math.max(items[i].s + 300, items[i + 1].s);
+    if (!items.length) return "";
+    return "WEBVTT\n\n" + items.map((x) => `${vttTime(x.s)} --> ${vttTime(x.e)}\n${x.text}\n`).join("\n");
+  }
+
+  function captureFromPlayer(t) {
+    return new Promise((resolve) => {
+      const reqId = Math.random().toString(36).slice(2);
+      const onMsg = (ev) => {
+        if (ev.source !== window || ev.data?.__cnweb !== "subs" || ev.data.reqId !== reqId) return;
+        window.removeEventListener("message", onMsg);
+        resolve(ev.data.body || "");
+      };
+      window.addEventListener("message", onMsg);
+      window.postMessage({ __cnweb: "capture-subs", reqId, lang: t.lang, kind: t.kind }, "*");
+      setTimeout(() => { window.removeEventListener("message", onMsg); resolve(""); }, 15000);
+    });
+  }
+
   async function createFromYtSubs() {
     const t = jaTrack();
     if (!t) return;
     setStatus("creating", "Đang đọc phụ đề tiếng Nhật trên trang…");
     let vtt = "";
+    // 1) tải trực tiếp link phụ đề (chạy được với video/tài khoản chưa bị YouTube đòi PO token)
     try {
       const u = new URL(t.baseUrl, location.origin);
       u.searchParams.set("fmt", "vtt");
-      vtt = await (await fetch(u.toString(), { credentials: "include" })).text();
-    } catch (e) { /* xử lý bên dưới */ }
-    if (!vtt.trim().startsWith("WEBVTT")) {
-      return setStatus("missing", "YouTube không trả nội dung phụ đề cho extension (có thể bị chặn). Hãy thử “Nhận dạng giọng nói trên server”.");
+      vtt = toVtt(await (await fetch(u.toString(), { credentials: "include" })).text());
+    } catch (e) { /* thử cách 2 */ }
+    // 2) nhờ player YouTube tự tải (có PO token) rồi bắt lại nội dung
+    if (!vtt) {
+      setStatus("creating", "Đang lấy phụ đề qua trình phát YouTube…");
+      vtt = toVtt(await captureFromPlayer(t));
+    }
+    if (!vtt) {
+      return setStatus("missing", "Không lấy được phụ đề từ YouTube. Thử bật phụ đề tiếng Nhật (nút CC) trên video vài giây rồi bấm lại, hoặc dùng “Nhận dạng giọng nói trên server”.");
     }
     const r = await api("/api/jobs/subtitle", "POST", {
       url: pageKey, subtitle: vtt, format: "vtt", subtitle_kind: t.kind === "asr" ? "youtube_auto" : "youtube_manual",
