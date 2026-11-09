@@ -1,6 +1,7 @@
 const DEFAULTS = { server: "http://localhost:8000", subOn: true, jaOn: true, viOn: true, furigana: true, romaji: false,
                    fontScale: 100, panelOn: true, hoverLookup: true, autoPause: "off", subBottom: 14, offset: 0,
-                   selTranslate: true, selMode: "instant", selEngine: "auto", selTarget: "vi", selDisabledSites: [] };
+                   selTranslate: true, selMode: "instant", selEngine: "auto", selTarget: "vi", selDisabledSites: [],
+                   selFurigana: true, selCjkLang: "ja" };
 const $ = (s) => document.querySelector(s);
 let S = { ...DEFAULTS };
 

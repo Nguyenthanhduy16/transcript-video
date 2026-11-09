@@ -17,3 +17,9 @@ textarea { width: 100%; resize: vertical; }
 .out .ipa { color: var(--accent); margin-left: 6px; }
 .out ul { margin: 6px 0 0; padding-left: 18px; white-space: normal; }
 .out .ex { margin-top: 8px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--border); padding-left: 8px; }
+.out .orig { line-height: 2.1; white-space: normal; border-bottom: 1px dashed var(--border); padding-bottom: 6px; margin-bottom: 6px; }
+.out .orig rt { font-size: .55em; color: var(--accent); }
+.out .trj { margin-top: 8px; }
+.out .kj { white-space: normal; margin-top: 4px; }
+.out .kj .c { font-size: 20px; }
+.out details { white-space: normal; margin-top: 8px; }

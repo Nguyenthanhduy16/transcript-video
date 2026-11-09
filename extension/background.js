@@ -28,7 +28,25 @@ async function callApi({ path, method = "GET", body }) {
 }
 
 // ---------------------------------------------------------------- dịch khi bôi đen
-const isShort = (t) => t.length <= 40 && t.trim().split(/\s+/).length <= 3 && !t.includes("\n");
+const CJK = /[\u3040-\u30ff\u3400-\u9fff]/;
+const isShort = (t) => !t.includes("\n") && (CJK.test(t) ? t.length <= 12 && !/[。！？、]/.test(t)
+                                                          : t.length <= 40 && t.trim().split(/\s+/).length <= 3);
+
+// bảng kanji KANJIDIC2 (EDRDG, CC BY-SA 4.0) nhúng trong extension: âm Hán Việt, On/Kun, nghĩa tiếng Anh, số nét
+let kanjiDic = null;
+async function loadKanji() {
+  if (kanjiDic) return kanjiDic;
+  const r = await fetch(chrome.runtime.getURL("data/kanjidic.json.gz"));
+  const stream = r.body.pipeThrough(new DecompressionStream("gzip"));
+  kanjiDic = JSON.parse(await new Response(stream).text());
+  return kanjiDic;
+}
+async function kanjiLookup(chars) {
+  const d = await loadKanji();
+  return chars.filter((c) => d[c]).map((c) => ({ char: c, on: d[c].on || [], kun: d[c].kun || [],
+    hanViet: (d[c].vi || []).slice(0, 2).map((v) => v.toUpperCase()).join("/"), meaning: (d[c].en || []).slice(0, 3).join(", "),
+    meaningLang: "en", strokes: d[c].strokes || null }));
+}
 
 async function googleTranslate(text, source, target) {
   // endpoint công khai của Google Dịch (không chính thức, không cần key)
@@ -44,6 +62,7 @@ async function googleTranslate(text, source, target) {
   if (!translation) throw new Error("Google Dịch không trả kết quả");
   const translit = (j.sentences || []).map((x) => x.src_translit || "").join("").trim();
   const out = { translation, detectedLang: j.src || source, engine: "google", kind: "text" };
+  if (translit) out.translit = translit;            // tiếng Nhật: romaji của câu gốc
   if (isShort(text) && j.dict && j.dict.length) {
     out.kind = "word";
     out.meanings = j.dict.slice(0, 4).map((d) => `${d.pos ? d.pos + ": " : ""}${(d.terms || []).slice(0, 5).join(", ")}`);
@@ -89,6 +108,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === "kanji") {
+    kanjiLookup(msg.chars || []).then((data) => sendResponse({ ok: true, data }), (e) => sendResponse({ ok: false, error: e.message }));
+    return true;
+  }
   if (msg && msg.type === "translate") {
     doTranslate(msg).then(sendResponse);
     return true;

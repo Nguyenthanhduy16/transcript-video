@@ -38,6 +38,13 @@ Bôi đen chữ trên bất kỳ trang nào, khung dịch tiếng Việt hiện 
 | Google Dịch | Online, nhanh, có nghĩa theo loại từ. Dùng endpoint công khai không chính thức của Google; văn bản được gửi tới Google. |
 | Claude (server) | Cần server có `ANTHROPIC_API_KEY`. Dịch thuật ngữ chuyên ngành tốt hơn, có phiên âm IPA, câu ví dụ. Có tốn phí API. |
 
+**Tiếng Nhật** (tự nhận khi có kana; chữ Hán thuần như 勉強 mặc định coi là tiếng Nhật, đổi được trong popup):
+- **Từ ngắn (≤ 12 ký tự):** chữ có furigana, cách đọc hiragana, romaji, dạng từ điển (食べた → 食べる), loại từ, nghĩa,
+  và từng kanji với **âm Hán Việt**, On/Kun, nghĩa.
+- **Câu/đoạn:** câu gốc có furigana phía trên, romaji, bản dịch, danh sách kanji (thu gọn).
+- **Không cần server:** âm Hán Việt, On/Kun (bảng KANJIDIC2 nhúng sẵn trong extension) và romaji (từ Google Dịch).
+- **Cần server của tool đang chạy** (không cần API key): furigana, cách đọc hiragana, dạng từ điển. Server dùng bộ tách từ SudachiPy.
+
 Không dịch được trên Google Docs (vẽ chữ bằng canvas, không phải văn bản thường) và trang `chrome://`.
 
 ## Ngôn ngữ video

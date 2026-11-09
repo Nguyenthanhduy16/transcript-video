@@ -10,10 +10,20 @@
   const ENGINE_NAMES = { chrome: "Chrome (trên máy)", google: "Google Dịch", server: "Claude (server)", claude: "Claude (server)" };
   const withTimeout = (p, ms, msg = "quá thời gian") => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
 
+  // chữ Hán không có kana (勉強, 東京): theo ngôn ngữ của trang, không rõ thì theo cài đặt (mặc định tiếng Nhật)
+  let cjkPref = "ja";
+  try { chrome.storage.sync.get("settings", ({ settings }) => { if (settings?.selCjkLang) cjkPref = settings.selCjkLang; }); } catch {}
+  try { chrome.storage.onChanged.addListener((ch) => { if (ch.settings?.newValue?.selCjkLang) cjkPref = ch.settings.newValue.selCjkLang; }); } catch {}
+  function hanOnlyLang() {
+    const pl = (document.documentElement.lang || "").toLowerCase();
+    if (pl.startsWith("ja")) return "ja";
+    if (pl.startsWith("zh")) return "zh";
+    return cjkPref;
+  }
   function guessLang(text) {
     if (/[぀-ヿ]/.test(text)) return "ja";
     if (/[가-힯]/.test(text)) return "ko";
-    if (/[一-鿿]/.test(text)) return "zh";
+    if (/[一-鿿]/.test(text)) return hanOnlyLang();
     if (/[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(text)) return "vi";
     if (/[Ѐ-ӿ]/.test(text)) return "ru";
     if (/[฀-๿]/.test(text)) return "th";
@@ -30,7 +40,11 @@
         }
         if (detector) {
           const r = (await withTimeout(detector.detect(text), 2000))[0];
-          if (r && r.confidence > 0.5 && r.detectedLanguage !== "und") return r.detectedLanguage.split("-")[0];
+          if (r && r.confidence > 0.5 && r.detectedLanguage !== "und") {
+            const l = r.detectedLanguage.split("-")[0];
+            // máy dò hay nhầm chữ Hán thuần (không kana) thành tiếng Trung
+            return l === "zh" && !/[\u3040-\u30ff]/.test(text) ? hanOnlyLang() : l;
+          }
         }
       }
     } catch { /* dùng đoán theo chữ */ }
@@ -114,5 +128,28 @@
     throw new Error(errors.join(" · "));
   }
 
-  globalThis.CNWEB_TR = { translate, detect, guessLang, LANG_NAMES, ENGINE_NAMES };
+  const CJK = /[\u3040-\u30ff\u3400-\u9fff]/;
+  const isShort = (t) => !t.includes("\n") && (CJK.test(t) ? t.length <= 12 && !/[。！？、]/.test(t)
+                                                            : t.length <= 40 && t.trim().split(/\s+/).length <= 3);
+
+  function msg(m) {
+    return new Promise((resolve) => chrome.runtime.sendMessage(m, (r) => resolve(chrome.runtime.lastError ? null : r)));
+  }
+  /** Thông tin thêm cho tiếng Nhật: kanji (KANJIDIC2 trong extension, luôn có) + tách từ/furigana (server, nếu chạy). */
+  async function jaExtras(text) {
+    const chars = [...new Set([...text].filter((c) => /[\u3400-\u9fff]/.test(c)))].slice(0, 12);
+    const [k, a] = await Promise.all([
+      chars.length ? msg({ type: "kanji", chars }) : null,
+      text.length <= 2000 ? msg({ type: "api", path: "/api/analyze-ja", method: "POST", body: { text } }) : null,
+    ]);
+    return { kanji: k?.ok ? k.data : [], analysis: a?.ok ? a.data : null, serverError: a && !a.ok ? a.error : null };
+  }
+  const escH = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  /** Câu gốc có furigana từ kết quả /api/analyze-ja. */
+  function rubyHTML(tokens) {
+    return tokens.map((t) => (t.furigana || [[t.surface, null]]).map(([b, r]) =>
+      r ? `<ruby>${escH(b)}<rt>${escH(r)}</rt></ruby>` : escH(b)).join("")).join("");
+  }
+
+  globalThis.CNWEB_TR = { translate, detect, guessLang, isShort, jaExtras, rubyHTML, LANG_NAMES, ENGINE_NAMES };
 })();

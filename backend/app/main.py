@@ -164,6 +164,35 @@ def translate_selection(body: TranslateIn):
         raise HTTPException(502, f"Dịch lỗi: {e}")
 
 
+POS_VI = {"noun": "danh từ", "pronoun": "đại từ", "verb": "động từ", "i-adjective": "tính từ đuôi い",
+          "na-adjective": "tính từ đuôi な", "adverb": "phó từ", "interjection": "thán từ", "conjunction": "liên từ",
+          "adnominal": "liên thể từ", "particle": "trợ từ", "auxiliary": "trợ động từ"}
+
+
+class AnalyzeIn(BaseModel):
+    text: str
+
+
+@app.post("/api/analyze-ja")
+def analyze_japanese(body: AnalyzeIn):
+    """Tách từ tiếng Nhật cho đoạn bôi đen (không cần LLM): furigana, cách đọc, romaji, dạng từ điển, kanji (Hán Việt)."""
+    from .pipeline import japanese, kanji as kanjidic
+    text = body.text.strip()
+    if not text or len(text) > 2000:
+        raise HTTPException(400, "Đoạn văn trống hoặc dài hơn 2.000 ký tự")
+    toks = japanese.tokenize(text)
+    words = [t for t in toks if t["isWord"]]
+    return {
+        "tokens": toks,
+        "reading": "".join(t["reading"] or t["surface"] for t in toks if t["pos"] not in ("space", "speaker")),
+        "romaji": japanese.romaji_line(toks),
+        "lemma": words[0]["lemma"] if len(words) == 1 else None,
+        "lemmaReading": words[0]["lemmaReading"] if len(words) == 1 else None,
+        "pos": POS_VI.get(words[0]["pos"], words[0]["posJa"]) if len(words) == 1 else None,
+        "kanji": kanjidic.lookup_many(japanese.extract_kanji(text)[:20]),
+    }
+
+
 @app.get("/api/jobs")
 def list_jobs():
     return jobs.list()

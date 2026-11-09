@@ -274,3 +274,21 @@ def test_translate_endpoint(monkeypatch):
     monkeypatch.setattr(Translator, "__init__", lambda self, *a, **k: (_ for _ in ()).throw(
         __import__("app.pipeline.translate", fromlist=["LLMUnavailable"]).LLMUnavailable("chưa có key")))
     assert c.post("/api/translate", json={"text": "new text"}).status_code == 503
+
+
+def test_analyze_japanese_endpoint():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.pipeline.quick_translate import _is_short
+    c = TestClient(app)
+    r = c.post("/api/analyze-ja", json={"text": "勉強しています"}).json()
+    assert r["reading"] == "べんきょうしています" and r["romaji"].startswith("benkyou")
+    k = {x["char"]: x for x in r["kanji"]}
+    assert k["勉"]["hanViet"].startswith("MIỄN") and "ベン" in k["勉"]["on"]
+    furi = [t["furigana"] for t in r["tokens"] if t["surface"] == "勉強"][0]
+    assert furi == [["勉強", "べんきょう"]]
+    one = c.post("/api/analyze-ja", json={"text": "食べた"}).json()
+    assert one["lemma"] == "食べる" and one["lemmaReading"] == "たべる" and one["pos"] == "động từ"
+    assert c.post("/api/analyze-ja", json={"text": ""}).status_code == 400
+    assert _is_short("勉強") and not _is_short("明日は漢字のテストがありますから、ちゃんと勉強してくださいね。")
+    assert _is_short("deploy") and not _is_short("this is a long sentence")

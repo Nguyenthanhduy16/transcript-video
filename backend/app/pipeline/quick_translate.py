@@ -28,15 +28,23 @@ class WordOut(BaseModel):
     translation: str = Field(description="Nghĩa phù hợp nhất, ngắn gọn")
     detectedLang: str
     lemma: str = Field(description="Dạng gốc (từ điển) của từ/cụm")
-    ipa: str = Field(description="Phiên âm IPA (tiếng Anh) hoặc cách đọc kana (tiếng Nhật); rỗng nếu không áp dụng")
+    ipa: str = Field(description="Phiên âm IPA (tiếng Anh) hoặc cách đọc hiragana (tiếng Nhật); rỗng nếu không áp dụng")
     pos: str = Field(description="Loại từ bằng tiếng Việt, vd. động từ, danh từ, cụm động từ")
     meanings: list[str] = Field(description="1–4 nghĩa thường gặp, mỗi nghĩa ngắn")
     example: str = Field(description="Một câu ví dụ ngắn bằng ngôn ngữ gốc")
     exampleVi: str = Field(description="Bản dịch câu ví dụ")
 
 
+CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
+
+
 def _is_short(text: str) -> bool:
-    return len(text) <= 40 and len(re.findall(r"\S+", text)) <= 3 and "\n" not in text
+    """Từ/cụm ngắn → trả dạng từ điển. Tiếng Nhật không có dấu cách nên xét theo số ký tự."""
+    if "\n" in text:
+        return False
+    if CJK_RE.search(text):
+        return len(text) <= 12 and not re.search(r"[。！？、]", text)
+    return len(text) <= 40 and len(re.findall(r"\S+", text)) <= 3
 
 
 def translate(text: str, target: str = "vi", source: str = "auto") -> dict:
@@ -55,7 +63,8 @@ def translate(text: str, target: str = "vi", source: str = "auto") -> dict:
     tr = Translator(source if source != "auto" else "en", target)
     system = (f"Bạn là từ điển và biên dịch viên cho người Việt. Dịch sang {tgt}. "
               + ("Người dùng bôi đen một từ/cụm từ khi đọc tài liệu: trả nghĩa đúng nhất, dạng gốc, phiên âm, "
-                 "loại từ, các nghĩa thường gặp và một câu ví dụ." if short else
+                 "loại từ, các nghĩa thường gặp và một câu ví dụ. Tiếng Nhật: lemma là dạng từ điển, ipa là cách đọc "
+                 "hiragana, nghĩa nào là từ Hán thì ghi kèm âm Hán Việt trong ngoặc, pos ghi cả cấp JLPT nếu biết." if short else
                  "Dịch tự nhiên, chính xác thuật ngữ chuyên ngành (giữ nguyên tên riêng, mã lệnh, công thức), "
                  "giữ nguyên xuống dòng và gạch đầu dòng. Chỉ trả bản dịch, không giải thích."))
     out = tr._parse(system, text, WordOut if short else TextOut, 4000, effort="low")

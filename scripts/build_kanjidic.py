@@ -17,8 +17,9 @@ out = {}
 for cid, lit, strokes, grade, freq, jlpt in db.execute("select ID, literal, stroke_count, grade, freq, jlpt from character"):
     rows = db.execute("select r_type, value from reading where gid in (select ID from rm_group where cid=?)", (cid,)).fetchall()
     mean = [m for (m,) in db.execute("select value from meaning where m_lang='' and gid in (select ID from rm_group where cid=?)", (cid,))]
+    import unicodedata
     rec = {"on": [v for t, v in rows if t == "ja_on"], "kun": [v for t, v in rows if t == "ja_kun"],
-           "vi": [v for t, v in rows if t == "vietnam"], "en": mean[:4]}
+           "vi": [unicodedata.normalize("NFC", v) for t, v in rows if t == "vietnam"], "en": mean[:4]}
     if grade: rec["grade"] = grade
     if freq: rec["freq"] = freq
     if jlpt: rec["jlptOld"] = jlpt          # JLPT cũ (1–4), trước 2010

@@ -3,7 +3,8 @@
   if (window.__cnwebSelect) return;
   window.__cnwebSelect = true;
   const TR = globalThis.CNWEB_TR;
-  const DEFAULTS = { selTranslate: true, selMode: "instant", selEngine: "auto", selTarget: "vi", selDisabledSites: [] };
+  const DEFAULTS = { selTranslate: true, selMode: "instant", selEngine: "auto", selTarget: "vi", selDisabledSites: [],
+                     selFurigana: true, selCjkLang: "ja" };
   let S = { ...DEFAULTS };
   const site = location.hostname;
   const enabled = () => S.selTranslate && !(S.selDisabledSites || []).includes(site);
@@ -51,6 +52,16 @@
       @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
       .fab { position: absolute; border: 0; border-radius: 9px; background: #e53945; color: #fff; font: 700 12px system-ui, sans-serif;
              padding: 5px 9px; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.25); }
+      .orig { font-size: 15px; line-height: 2.1; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed var(--border); }
+      .orig rt { font-size: .55em; color: var(--accent); }
+      .rd { color: var(--accent); font-weight: 600; }
+      .rom { color: var(--muted); font-size: 12px; }
+      .kj { display: grid; grid-template-columns: 34px 1fr; gap: 0 8px; margin-top: 6px; align-items: start; }
+      .kj .c { font-size: 24px; line-height: 1.2; font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; }
+      .kj .hv { font-weight: 700; }
+      .kj .on { font-size: 12px; color: var(--muted); }
+      details summary { cursor: pointer; font-size: 12px; color: var(--muted); margin-top: 8px; }
+      .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
       .toast { position: absolute; background: #2b2224; color: #fff; padding: 5px 10px; border-radius: 8px; font: 12px system-ui, sans-serif; }
     </style><div id="wrap"></div>`;
     (document.body || document.documentElement).appendChild(host);
@@ -116,6 +127,12 @@
       if (id !== seq) return;
       current.result = res;
       render(info, res);
+      if (res.detectedLang === "ja") {                 // furigana, cách đọc, kanji Hán Việt
+        const ex = await TR.jaExtras(info.text);
+        if (id !== seq) return;
+        current.ja = ex;
+        render(info, res);
+      }
     } catch (e) {
       if (id !== seq) return;
       render(info, null, e.message);
@@ -133,6 +150,8 @@
         <div class="foot">Đổi bộ dịch trong popup của extension (mục “Dịch khi bôi đen”).</div>`;
     } else if (res.kind === "same") {
       body = `<div class="muted">Đoạn này đã là ${esc(L[S.selTarget] || S.selTarget)}.</div>`;
+    } else if (res.detectedLang === "ja") {
+      body = jaBody(info, res, current?.ja);
     } else if (res.kind === "word") {
       body = `<div class="word"><b>${esc(res.lemma || info.text)}</b>${res.ipa ? `<span class="ipa">${esc(res.ipa)}</span>` : ""}${res.pos ? `<span class="pos">${esc(res.pos)}</span>` : ""}</div>
         <div class="tr"><b>${esc(res.translation)}</b></div>
@@ -141,7 +160,7 @@
     } else {
       body = `<div class="tr">${esc(res.translation)}</div>`;
     }
-    const short = info.text.length <= 40 && info.text.split(/\s+/).length <= 3;
+    const short = TR.isShort(info.text);
     card.innerHTML = `<div class="bar"><span class="lang">${bar}</span>
         ${res ? `<button class="ib" data-a="speak" title="Nghe phát âm câu gốc">🔊</button>
         <button class="ib" data-a="copy" title="Sao chép bản dịch">⧉</button>
@@ -149,6 +168,39 @@
         <button class="ib" data-a="window" title="Mở trong cửa sổ dịch">⤢</button>
         <button class="ib" data-a="close" title="Đóng (Esc)">✕</button></div><div class="body">${body}</div>`;
     place(card, info.rect, 380);
+  }
+
+  function kanjiRows(list) {
+    return list.map((k) => `<div class="kj"><span class="c">${esc(k.char)}</span><div><span class="hv">${esc(k.hanViet || "–")}</span>
+      · ${esc(k.meaning || "")}<div class="on">On: ${esc((k.on || []).join("、") || "–")} · Kun: ${esc((k.kun || []).join("、") || "–")}</div></div></div>`).join("");
+  }
+
+  /** Nội dung khung dịch cho tiếng Nhật. ex = {kanji, analysis} (đang tải thì undefined). */
+  function jaBody(info, res, ex) {
+    const a = ex?.analysis;
+    const short = TR.isShort(info.text);
+    const ruby = a && S.selFurigana ? TR.rubyHTML(a.tokens) : esc(info.text);
+    const reading = a?.reading || (res.engine === "claude" ? res.ipa : "");
+    const romaji = a?.romaji || res.translit || (res.engine === "google" ? res.ipa : "");
+    const kanji = ex?.kanji || [];
+    const loading = ex === undefined ? `<div class="hint"><span class="spin"></span>Đang lấy cách đọc và kanji…</div>` : "";
+    const noServer = ex && !a ? `<div class="hint">Bật server của tool để xem furigana và cách đọc hiragana.</div>` : "";
+    if (short) {
+      const lemma = a?.lemma && a.lemma !== info.text ? `<div class="pos">Dạng từ điển: <b>${esc(a.lemma)}</b> ${esc(a.lemmaReading || "")}</div>` : "";
+      return `<div class="word"><b class="orig" style="border:0;margin:0;padding:0;font-size:20px">${ruby}</b>
+          ${reading ? `<span class="rd">${esc(reading)}</span>` : ""}${romaji ? `<span class="rom">${esc(romaji)}</span>` : ""}</div>
+        ${lemma}${a?.pos || res.pos ? `<div class="pos">${esc(res.pos || a.pos)}</div>` : ""}
+        <div class="tr"><b>${esc(res.translation)}</b></div>
+        ${res.meanings?.length ? `<ul>${res.meanings.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
+        ${res.example ? `<div class="ex">${esc(res.example)}${res.exampleVi ? `<br>${esc(res.exampleVi)}` : ""}</div>` : ""}
+        ${kanji.length ? kanjiRows(kanji) : ""}${loading}${noServer}
+        ${kanji.length ? `<div class="hint">Kanji: KANJIDIC2 © EDRDG (CC BY-SA 4.0)</div>` : ""}`;
+    }
+    return `${a && S.selFurigana ? `<div class="orig">${ruby}</div>` : ""}
+      ${romaji && info.text.length <= 300 ? `<div class="rom" style="margin-bottom:6px">${esc(romaji)}</div>` : ""}
+      <div class="tr">${esc(res.translation)}</div>
+      ${kanji.length ? `<details><summary>Kanji (${kanji.length})</summary>${kanjiRows(kanji)}<div class="hint">KANJIDIC2 © EDRDG (CC BY-SA 4.0)</div></details>` : ""}
+      ${loading}${noServer}`;
   }
 
   function toast(msg) {
@@ -181,9 +233,10 @@
     }
     if (a === "save" && res) {
       const { words = [] } = await chrome.storage.local.get("words");
-      const lemma = res.lemma || current.text;
+      const a = current.ja?.analysis;
+      const lemma = a?.lemma || res.lemma || current.text;
       if (!words.some((w) => w.lemma === lemma)) {
-        words.push({ lemma, reading: res.ipa || "", meaning: res.translation, jlpt: null, example: "", exampleVi: "",
+        words.push({ lemma, reading: a?.lemmaReading || a?.reading || res.ipa || "", meaning: res.translation, jlpt: null, example: "", exampleVi: "",
                      page: location.href, lang: res.detectedLang, addedAt: new Date().toISOString() });
         await chrome.storage.local.set({ words });
       }

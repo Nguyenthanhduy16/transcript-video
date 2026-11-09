@@ -19,6 +19,17 @@ async function go() {
     } else {
       $("#out").textContent = r.kind === "same" ? "Đoạn này đã là tiếng Việt." : r.translation;
     }
+    if (r.detectedLang === "ja") {
+      const ex = await TR.jaExtras(text);
+      const a = ex.analysis;
+      const head = a ? `<div class="orig">${TR.rubyHTML(a.tokens)}</div><div class="muted small">${esc(a.reading)} · ${esc(a.romaji)}</div>`
+                     : (r.translit ? `<div class="muted small">${esc(r.translit)}</div>` : "");
+      const kj = ex.kanji.map((k) => `<div class="kj"><b class="c">${esc(k.char)}</b> <b>${esc(k.hanViet || "–")}</b> · ${esc(k.meaning)}
+        <span class="muted small">On ${esc(k.on.join("、") || "–")} · Kun ${esc(k.kun.join("、") || "–")}</span></div>`).join("");
+      $("#out").innerHTML = head + `<div class="trj">${$("#out").innerHTML}</div>` +
+        (kj ? `<details open><summary class="muted small">Kanji (${ex.kanji.length})</summary>${kj}<div class="muted small">KANJIDIC2 © EDRDG (CC BY-SA 4.0)</div></details>` : "") +
+        (a ? "" : `<div class="muted small">Bật server của tool để xem furigana.</div>`);
+    }
   } catch (e) {
     $("#out").innerHTML = `<div class="err">${esc(e.message)}</div>`;
   }
