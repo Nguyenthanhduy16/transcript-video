@@ -1,5 +1,6 @@
 const DEFAULTS = { server: "http://localhost:8000", subOn: true, jaOn: true, viOn: true, furigana: true, romaji: false,
-                   fontScale: 100, panelOn: true, hoverLookup: true, autoPause: "off", subBottom: 14, offset: 0 };
+                   fontScale: 100, panelOn: true, hoverLookup: true, autoPause: "off", subBottom: 14, offset: 0,
+                   selTranslate: true, selMode: "instant", selEngine: "auto", selTarget: "vi", selDisabledSites: [] };
 const $ = (s) => document.querySelector(s);
 let S = { ...DEFAULTS };
 
@@ -14,6 +15,7 @@ async function load() {
   $("#server").value = S.server;
   $("#openWeb").href = S.server;
   outputs();
+  siteButton();
   health();
   tabStatus();
   words();
@@ -23,7 +25,7 @@ const save = () => chrome.storage.sync.set({ settings: S });
 
 document.querySelectorAll("[data-k]").forEach((el) => el.addEventListener("input", () => {
   const k = el.dataset.k;
-  S[k] = el.type === "checkbox" ? el.checked : Number(el.value);
+  S[k] = el.type === "checkbox" ? el.checked : el.tagName === "SELECT" ? el.value : Number(el.value);
   outputs();
   save();
 }));
@@ -106,6 +108,24 @@ async function words() {
     words();
   };
 }
+
+async function siteButton() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const btn = $("#siteBtn");
+  let host = "";
+  try { host = new URL(tab.url).hostname; } catch {}
+  if (!host) { btn.disabled = true; return; }
+  const off = (S.selDisabledSites || []).includes(host);
+  btn.textContent = off ? `Bật lại trên ${host}` : `Tắt trên ${host}`;
+  btn.onclick = async () => {
+    const list = new Set(S.selDisabledSites || []);
+    off ? list.delete(host) : list.add(host);
+    S.selDisabledSites = [...list];
+    await save();
+    siteButton();
+  };
+}
+$("#openTr").addEventListener("click", () => chrome.runtime.sendMessage({ type: "openTranslator", text: "" }));
 
 function escapeHtml(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 load();

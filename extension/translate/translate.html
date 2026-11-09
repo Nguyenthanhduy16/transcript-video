@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Dịch nhanh</title>
+  <link rel="stylesheet" href="translate.css">
+</head>
+<body>
+  <header><span class="logo">字</span><b>Dịch nhanh</b><span class="spacer"></span>
+    <label class="muted small">Bộ dịch
+      <select id="engine"><option value="auto">Tự động</option><option value="chrome">Chrome (trên máy)</option>
+        <option value="google">Google Dịch</option><option value="server">Claude (server)</option></select></label></header>
+  <textarea id="src" rows="6" placeholder="Dán hoặc gõ đoạn cần dịch… (Ctrl+Enter để dịch)"></textarea>
+  <div class="row"><span id="lang" class="muted small"></span><span class="spacer"></span>
+    <button id="speak" class="btn" title="Nghe phát âm">🔊</button><button id="go" class="btn primary">Dịch</button></div>
+  <section id="out" class="out" aria-live="polite"></section>
+  <div class="row"><span class="spacer"></span><button id="copy" class="btn">Sao chép bản dịch</button></div>
+  <script src="../shared/engines.js"></script>
+  <script src="translate.js"></script>
+</body>
+</html>

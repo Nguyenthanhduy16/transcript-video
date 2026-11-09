@@ -27,7 +27,78 @@ async function callApi({ path, method = "GET", body }) {
   }
 }
 
+// ---------------------------------------------------------------- dịch khi bôi đen
+const isShort = (t) => t.length <= 40 && t.trim().split(/\s+/).length <= 3 && !t.includes("\n");
+
+async function googleTranslate(text, source, target) {
+  // endpoint công khai của Google Dịch (không chính thức, không cần key)
+  const params = new URLSearchParams({ client: "gtx", sl: source || "auto", tl: target, dj: "1" });
+  ["t", "bd", "rm"].forEach((d) => params.append("dt", d));
+  const url = "https://translate.googleapis.com/translate_a/single?" + params;
+  const r = text.length > 1500
+    ? await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: "q=" + encodeURIComponent(text) })
+    : await fetch(url + "&q=" + encodeURIComponent(text));
+  if (!r.ok) throw new Error(`Google Dịch trả lỗi HTTP ${r.status}`);
+  const j = await r.json();
+  const translation = (j.sentences || []).map((x) => x.trans || "").join("");
+  if (!translation) throw new Error("Google Dịch không trả kết quả");
+  const translit = (j.sentences || []).map((x) => x.src_translit || "").join("").trim();
+  const out = { translation, detectedLang: j.src || source, engine: "google", kind: "text" };
+  if (isShort(text) && j.dict && j.dict.length) {
+    out.kind = "word";
+    out.meanings = j.dict.slice(0, 4).map((d) => `${d.pos ? d.pos + ": " : ""}${(d.terms || []).slice(0, 5).join(", ")}`);
+    if (translit) out.ipa = translit;
+  }
+  return out;
+}
+
+async function serverTranslate(text, source, target) {
+  const r = await callApi({ path: "/api/translate", method: "POST", body: { text, source: source || "auto", target } });
+  if (!r.ok) throw new Error(r.status === 503 ? "server chưa có API key Claude" : r.error);
+  return r.data;
+}
+
+async function doTranslate({ engine, text, source, target = "vi" }) {
+  try {
+    const data = engine === "google" ? await googleTranslate(text, source, target) : await serverTranslate(text, source, target);
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+}
+
+// menu chuột phải: dùng được cả ở trang PDF / trang extension không chèn script được
+function setupMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: "cnweb-translate", title: "Dịch “%s” sang tiếng Việt", contexts: ["selection"] });
+  });
+}
+chrome.runtime.onInstalled.addListener(setupMenu);
+chrome.runtime.onStartup.addListener(setupMenu);
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== "cnweb-translate" || !info.selectionText) return;
+  const text = info.selectionText;
+  try {
+    if (!tab || tab.id < 0) throw new Error("no tab");
+    const r = await chrome.tabs.sendMessage(tab.id, { type: "translateSelection", text }, { frameId: info.frameId || 0 });
+    if (!r || !r.ok) throw new Error("no content script");
+  } catch {
+    chrome.windows.create({ url: chrome.runtime.getURL("translate/translate.html?text=" + encodeURIComponent(text)),
+                            type: "popup", width: 460, height: 560 });
+  }
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === "translate") {
+    doTranslate(msg).then(sendResponse);
+    return true;
+  }
+  if (msg && msg.type === "openTranslator") {
+    chrome.windows.create({ url: chrome.runtime.getURL("translate/translate.html?text=" + encodeURIComponent(msg.text || "")),
+                            type: "popup", width: 460, height: 560 });
+    sendResponse({ ok: true });
+    return false;
+  }
   if (msg && msg.type === "api") {
     callApi(msg).then(sendResponse);
     return true; // trả lời bất đồng bộ

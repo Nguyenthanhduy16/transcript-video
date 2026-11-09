@@ -119,10 +119,11 @@ Job transcript nhận thêm `num_speakers` (biết trước số người nói �
 
 ### Extension Chrome
 
-Phụ đề song ngữ Nhật/Anh – Việt, tra từ, phân tích câu ngay trên YouTube và trang có video.
+Phụ đề song ngữ Nhật/Anh – Việt, tra từ, phân tích câu ngay trên YouTube và trang có video;
+**dịch ngay khi bôi đen** chữ trên mọi trang web (Chrome tích hợp / Google Dịch / Claude).
 Cài bằng `chrome://extensions`, bật Developer mode, rồi **Load unpacked** thư mục `extension/`.
 Hướng dẫn chi tiết: [`extension/README.md`](extension/README.md).
-Endpoint dành cho extension: `GET /api/resolve?url=` và `POST /api/jobs/subtitle` (gửi phụ đề đọc từ trang).
+Endpoint dành cho extension: `GET /api/resolve?url=`, `POST /api/jobs/subtitle` (gửi phụ đề đọc từ trang), `POST /api/translate` (dịch đoạn bôi đen bằng Claude).
 
 ### Benchmark và nghiệm thu
 

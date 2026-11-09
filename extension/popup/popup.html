@@ -14,7 +14,16 @@
   </section>
 
   <section class="card">
-    <h2>Hiển thị</h2>
+    <h2>Dịch khi bôi đen</h2>
+    <label class="row"><span>Bật trên mọi trang</span><input type="checkbox" data-k="selTranslate"></label>
+    <label class="row"><span>Cách hiện</span><select data-k="selMode"><option value="instant">Dịch ngay</option><option value="button">Hiện nút “Dịch”</option></select></label>
+    <label class="row"><span>Bộ dịch</span><select data-k="selEngine"><option value="auto">Tự động</option><option value="chrome">Chrome (trên máy)</option><option value="google">Google Dịch</option><option value="server">Claude (server)</option></select></label>
+    <div class="actions"><button id="siteBtn" class="btn">Tắt trên trang này</button><button id="openTr" class="btn">Mở khung dịch</button></div>
+    <p class="muted small" style="margin:6px 0 0">Tự động: bộ dịch của Chrome (chạy trên máy) → Google Dịch → Claude. Trang PDF: bôi đen rồi chuột phải → “Dịch … sang tiếng Việt”.</p>
+  </section>
+
+  <section class="card">
+    <h2>Phụ đề video</h2>
     <label class="row"><span>Phụ đề trên video</span><input type="checkbox" data-k="subOn"></label>
     <label class="row"><span>Bảng transcript</span><input type="checkbox" data-k="panelOn"></label>
     <label class="row"><span>Câu tiếng Nhật</span><input type="checkbox" data-k="jaOn"></label>

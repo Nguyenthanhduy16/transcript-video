@@ -242,3 +242,35 @@ def test_english_tokens_and_cues():
     long = {"start": 0, "end": 12, "text": "This is the first sentence of a long talk. And this is the second one, which goes on for a while."}
     parts = split_long_cue(long, max_chars_for("en"))
     assert len(parts) == 2 and parts[1]["text"].startswith("And")
+
+
+def test_translate_endpoint(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.pipeline import quick_translate as qt
+    from app.pipeline.translate import Translator
+    calls = []
+
+    def fake_init(self, *a, **k):
+        self.usage = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "calls": 0}
+
+    def fake_parse(self, system, content, fmt, max_tokens=16000, model=None, effort=None):
+        calls.append((fmt.__name__, effort))
+        if fmt is qt.WordOut:
+            return fmt(translation="triển khai", detectedLang="en", lemma="deploy", ipa="/dɪˈplɔɪ/", pos="động từ",
+                       meanings=["triển khai", "bố trí"], example="We deploy every day.", exampleVi="Chúng tôi triển khai mỗi ngày.")
+        return fmt(translation="Bản dịch: " + content, detectedLang="en")
+    monkeypatch.setattr(Translator, "__init__", fake_init)
+    monkeypatch.setattr(Translator, "_parse", fake_parse)
+    qt._cache.clear()
+    c = TestClient(app)
+    w = c.post("/api/translate", json={"text": "deploying"}).json()
+    assert w["kind"] == "word" and w["lemma"] == "deploy" and w["ipa"]
+    t = c.post("/api/translate", json={"text": "This paragraph explains how the agent loop works in detail."}).json()
+    assert t["kind"] == "text" and t["translation"].startswith("Bản dịch")
+    again = c.post("/api/translate", json={"text": "deploying"}).json()
+    assert again.get("cached") and len(calls) == 2 and calls[0] == ("WordOut", "low")
+    assert c.post("/api/translate", json={"text": "  "}).status_code == 400
+    monkeypatch.setattr(Translator, "__init__", lambda self, *a, **k: (_ for _ in ()).throw(
+        __import__("app.pipeline.translate", fromlist=["LLMUnavailable"]).LLMUnavailable("chưa có key")))
+    assert c.post("/api/translate", json={"text": "new text"}).status_code == 503

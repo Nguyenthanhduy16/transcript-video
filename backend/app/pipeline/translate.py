@@ -144,7 +144,8 @@ class Translator:
             self.system += "\n\nBẢNG THUẬT NGỮ / GHI CHÚ SERIES:\n" + glossary.strip()
 
     # ---------------------------------------------------------------- gọi API
-    def _parse(self, system: str, content: str, fmt, max_tokens: int = 16000, model: str = LLM_MODEL):
+    def _parse(self, system: str, content: str, fmt, max_tokens: int = 16000, model: str = LLM_MODEL,
+               effort: str | None = None):
         a = self.anthropic
         kw = {}
         if not model.startswith("claude-haiku"):
@@ -157,7 +158,7 @@ class Translator:
                 system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": content}],
                 output_format=fmt,
-                output_config={"effort": LLM_EFFORT},
+                output_config={"effort": effort or LLM_EFFORT},
                 **kw,
             )
         except a.AuthenticationError as e:

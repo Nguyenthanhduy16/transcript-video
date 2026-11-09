@@ -144,6 +144,26 @@ def create_subtitle_job(body: SubtitleJobIn):
     return jobs.submit("transcript", params, label=body.title or body.url)
 
 
+class TranslateIn(BaseModel):
+    text: str
+    target: str = "vi"
+    source: str = "auto"
+
+
+@app.post("/api/translate")
+def translate_selection(body: TranslateIn):
+    """Dịch đoạn văn người dùng bôi đen (extension). 503 khi server chưa có API key Claude."""
+    from .pipeline import quick_translate
+    try:
+        return quick_translate.translate(body.text, body.target, body.source)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except LLMUnavailable as e:
+        raise HTTPException(503, f"LLM_UNAVAILABLE: server chưa có API key Claude ({e})")
+    except Exception as e:
+        raise HTTPException(502, f"Dịch lỗi: {e}")
+
+
 @app.get("/api/jobs")
 def list_jobs():
     return jobs.list()

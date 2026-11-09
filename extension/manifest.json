@@ -2,24 +2,67 @@
   "manifest_version": 3,
   "name": "Transcript học ngoại ngữ",
   "short_name": "Transcript",
-  "version": "0.3.0",
-  "description": "Phụ đề song ngữ Nhật/Anh – Việt (furigana cho tiếng Nhật), tra từ, phân tích câu ngay trên YouTube và các trang có video.",
-  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "action": { "default_popup": "popup/popup.html", "default_title": "Transcript học ngoại ngữ" },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "version": "0.4.0",
+  "description": "Phụ đề song ngữ Nhật/Anh – Việt cho video, và dịch ngay khi bôi đen chữ trên mọi trang.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Transcript học ngoại ngữ"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://translate.googleapis.com/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"],
-      "js": ["content/yt-main.js"],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "content/yt-main.js"
+      ],
       "world": "MAIN",
       "run_at": "document_start"
     },
     {
-      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"],
-      "js": ["content/render.js", "content/content.js"],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "content/render.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "shared/engines.js",
+        "content/select.js"
+      ],
+      "all_frames": true,
       "run_at": "document_idle"
     }
   ]
